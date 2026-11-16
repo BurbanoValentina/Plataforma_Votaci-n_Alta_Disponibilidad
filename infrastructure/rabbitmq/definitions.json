@@ -1,0 +1,79 @@
+{
+  "rabbit_version": "3.12.0",
+  "users": [
+    {
+      "name": "guest",
+      "password_hash": "wB0M+nQyGk7hG30FjY3f6t45H+E=",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "guest",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "live_results_global",
+      "vhost": "/",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "live_results_regional",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "global_dashboard_queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "regional_dashboard_queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "live_results_global",
+      "vhost": "/",
+      "destination": "global_dashboard_queue",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    },
+    {
+      "source": "live_results_regional",
+      "vhost": "/",
+      "destination": "regional_dashboard_queue",
+      "destination_type": "queue",
+      "routing_key": "results.*",
+      "arguments": {}
+    }
+  ]
+}

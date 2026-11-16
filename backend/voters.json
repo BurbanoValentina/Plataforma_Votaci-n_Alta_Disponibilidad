@@ -1,0 +1,22 @@
+[
+  { "voterId": "voter_001", "fullName": "Carlos Mendoza", "region": "NORTE" },
+  { "voterId": "voter_002", "fullName": "Maria Fernandez", "region": "SUR" },
+  { "voterId": "voter_003", "fullName": "Juan Perez", "region": "CENTRO" },
+  { "voterId": "voter_004", "fullName": "Ana Lucia Gomez", "region": "ESTE" },
+  { "voterId": "voter_005", "fullName": "Diego Ramirez", "region": "OESTE" },
+  { "voterId": "voter_006", "fullName": "Sofia Castillo", "region": "NORTE" },
+  { "voterId": "voter_007", "fullName": "Andres Morales", "region": "SUR" },
+  { "voterId": "voter_008", "fullName": "Camila Herrera", "region": "CENTRO" },
+  { "voterId": "voter_009", "fullName": "Mateo Rios", "region": "ESTE" },
+  { "voterId": "voter_010", "fullName": "Valentina Silva", "region": "OESTE" },
+  { "voterId": "voter_011", "fullName": "Sebastian Castro", "region": "NORTE" },
+  { "voterId": "voter_012", "fullName": "Isabella Ortiz", "region": "SUR" },
+  { "voterId": "voter_013", "fullName": "Lucas Navarro", "region": "CENTRO" },
+  { "voterId": "voter_014", "fullName": "Gabriela Rojas", "region": "ESTE" },
+  { "voterId": "voter_015", "fullName": "Nicolas Vargas", "region": "OESTE" },
+  { "voterId": "voter_016", "fullName": "Daniela Medina", "region": "NORTE" },
+  { "voterId": "voter_017", "fullName": "Santiago Guerrero", "region": "SUR" },
+  { "voterId": "voter_018", "fullName": "Mariana Flores", "region": "CENTRO" },
+  { "voterId": "voter_019", "fullName": "David Paredes", "region": "ESTE" },
+  { "voterId": "voter_020", "fullName": "Paula Salazar", "region": "OESTE" }
+]
