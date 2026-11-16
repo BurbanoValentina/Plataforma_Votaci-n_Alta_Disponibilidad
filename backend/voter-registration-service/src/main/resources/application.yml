@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: voter-registration-service
+
+voting:
+  registration:
+    file: classpath:voters.json
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    topic:
+      eligible-voters: eligible_voters
+
+logging:
+  level:
+    root: INFO
+    com.voting.platform: DEBUG
