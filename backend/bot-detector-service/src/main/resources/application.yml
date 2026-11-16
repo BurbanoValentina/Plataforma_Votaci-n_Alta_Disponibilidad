@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: bot-detector-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/voting_db}
+    username: ${SPRING_DATASOURCE_USERNAME:voting_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:voting_pass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+voting:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    topic:
+      raw-votes: raw_votes
+      security-alerts: security_alerts
+    group-id: bot-detector-group
+
+logging:
+  level:
+    root: INFO
+    com.voting.platform: DEBUG

@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: regional-rollup-service
+
+voting:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    topic:
+      raw-votes: raw_votes
+    group-id: regional-rollup-group
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    exchange:
+      regional: live_results_regional
+
+logging:
+  level:
+    root: INFO
+    com.voting.platform: DEBUG
