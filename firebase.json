@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "frontend/html",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -12,5 +12,18 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Plataforma de Votación",
+        "supportEmail": "julieth.mena@campusucc.edu.co",
+        "authorizedRedirectUris": [
+          "https://plataformadevotacion.firebaseapp.com/__/auth/handler",
+          "http://localhost"
+        ]
+      }
+    }
   }
 }

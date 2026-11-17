@@ -23,6 +23,10 @@
         input:focus-visible, button:focus-visible { outline: 3px solid rgba(49,90,133,.22); outline-offset: 2px; }
         .primary { width: 100%; padding: .82rem 1rem; border: 0; border-radius: 10px; color: #fff; background: var(--navy); font: inherit; font-weight: 800; cursor: pointer; transition: background .2s, transform .2s; }
         .primary:hover { background: var(--navy-dark); transform: translateY(-1px); }
+        .google { width: 100%; display: flex; align-items: center; justify-content: center; gap: .55rem; margin-top: .75rem; padding: .78rem 1rem; border: 1px solid var(--border); border-radius: 10px; color: var(--ink); background: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+        .google:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .divider { display: flex; align-items: center; gap: .75rem; margin: 1.15rem 0; color: var(--muted); font-size: .78rem; }
+        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
         .secondary-link { display: block; margin: .9rem 0 0; padding: 0; border: 0; color: var(--navy); background: none; font: inherit; font-size: .86rem; font-weight: 700; cursor: pointer; text-align: center; }
         .helper { margin-top: 1rem; color: var(--muted); font-size: .8rem; line-height: 1.5; text-align: center; }
         #message { display: none; margin-bottom: 1rem; padding: .75rem; border-radius: 10px; font-size: .85rem; line-height: 1.4; }
@@ -57,6 +61,8 @@
                 </div>
                 <button class="primary" id="submit-button" type="submit">Ingresar</button>
             </form>
+            <div class="divider"><span>o continúa con</span></div>
+            <button class="google" id="google-button" type="button"><span aria-hidden="true">G</span> Continuar con Google</button>
             <button class="secondary-link" id="reset-button" type="button">¿Olvidaste tu contraseña?</button>
             <p class="helper">Tu acceso se gestiona de forma segura mediante Firebase Authentication.</p>
             <div id="setup-warning">Firebase aún no está configurado. Completa <code>firebase-config.js</code> con la configuración de tu aplicación web.</div>
@@ -65,7 +71,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
         import { firebaseConfig, isFirebaseConfigured } from "./firebase-config.js";
 
         const form = document.getElementById("auth-form");
@@ -74,6 +80,7 @@
         const message = document.getElementById("message");
         const submitButton = document.getElementById("submit-button");
         const resetButton = document.getElementById("reset-button");
+        const googleButton = document.getElementById("google-button");
         const warning = document.getElementById("setup-warning");
         let mode = "login";
 
@@ -91,7 +98,10 @@
                 "auth/email-already-in-use": "Ya existe una cuenta con este correo.",
                 "auth/weak-password": "La contraseña debe tener al menos 6 caracteres.",
                 "auth/invalid-email": "Ingresa un correo electrónico válido.",
-                "auth/too-many-requests": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo."
+                "auth/too-many-requests": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+                "auth/popup-closed-by-user": "Cerraste la ventana de Google antes de completar el acceso.",
+                "auth/popup-blocked": "El navegador bloqueó la ventana de Google. Permite ventanas emergentes e intenta nuevamente.",
+                "auth/unauthorized-domain": "Este dominio aún no está autorizado en Firebase Authentication."
             };
             return messages[error.code] || "No fue posible completar la operación. Intenta nuevamente.";
         }
@@ -125,6 +135,21 @@
                 showMessage(firebaseMessage(error));
                 submitButton.disabled = false;
                 submitButton.textContent = mode === "login" ? "Ingresar" : "Crear cuenta";
+            }
+        });
+
+        googleButton.addEventListener("click", async () => {
+            if (!auth) { warning.style.display = "block"; return; }
+            googleButton.disabled = true;
+            googleButton.textContent = "Conectando con Google...";
+            try {
+                await signInWithPopup(auth, new GoogleAuthProvider());
+                showMessage("Acceso correcto. Redirigiendo...", "success");
+                setTimeout(() => window.location.replace("index.html"), 500);
+            } catch (error) {
+                showMessage(firebaseMessage(error));
+                googleButton.disabled = false;
+                googleButton.innerHTML = '<span aria-hidden="true">G</span> Continuar con Google';
             }
         });
 
