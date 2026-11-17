@@ -39,3 +39,6 @@ Thumbs.db
 
 ### Local Environment Overrides ###
 .env.local
+
+### Firebase CLI cache ###
+.firebase/
