@@ -162,6 +162,29 @@
             color: var(--text-secondary);
         }
     </style>
+    <style>
+        :root { --bg-color: #f7f9fc; --card-bg: #fff; --border-color: #e2e8f0; --accent-cyan: #315a85; --accent-green: #27845b; --text-primary: #243247; --text-secondary: #64748b; }
+        * { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        body { background: radial-gradient(circle at top right, #eaf2fa 0, transparent 35%), var(--bg-color); color: var(--text-primary); padding: clamp(1rem, 4vw, 3rem); }
+        .container { max-width: 960px; }
+        header { margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); gap: 1rem; }
+        h1 { color: var(--accent-cyan); background: none; -webkit-text-fill-color: initial; font-size: clamp(1.5rem, 3vw, 2.15rem); letter-spacing: -.03em; }
+        .status-badge { background: #ddf3e7; color: var(--accent-green); border: 1px solid #a9ddc1; font-weight: 700; white-space: nowrap; }
+        .status-dot { background-color: var(--accent-green); }
+        .total-card, .results-card { background: rgba(255,255,255,.96); border: 1px solid var(--border-color); border-radius: 18px; box-shadow: 0 12px 30px rgba(36,50,71,.08); }
+        .total-card { padding: 2rem; margin-bottom: 1.25rem; }
+        .total-title { color: var(--text-secondary); font-size: .85rem; letter-spacing: .08em; font-weight: 800; }
+        .total-count { color: var(--accent-cyan); font-size: clamp(3rem, 8vw, 4.5rem); }
+        .results-card { padding: clamp(1.25rem, 3vw, 2rem); }
+        .results-card h2 { color: var(--text-primary); }
+        .candidate-item { margin-bottom: 1.25rem; }
+        .candidate-header { font-size: 1rem; color: var(--text-primary); }
+        .candidate-votes { color: var(--accent-cyan); font-weight: 800; }
+        .progress-bar-bg { height: 20px; background: #eaf2fa; border: 1px solid var(--border-color); border-radius: 10px; }
+        .progress-bar-fill { background: linear-gradient(90deg, #315a85, #6d9bc4); border-radius: 10px; }
+        .timestamp { color: var(--text-secondary); margin-top: 1.25rem; }
+        @media (max-width: 640px) { header { align-items: flex-start; flex-direction: column; } .status-badge { align-self: flex-start; } }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -272,5 +295,6 @@
         connectSSE();
         setInterval(fetchInitial, 2000);
     </script>
+    <script type="module" src="./firebase-auth.js"></script>
 </body>
 </html>
