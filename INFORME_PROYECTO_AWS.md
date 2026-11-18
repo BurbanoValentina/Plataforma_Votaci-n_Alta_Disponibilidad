@@ -436,6 +436,71 @@ voting-rabbitmq           52.1%     78.2MiB / 512MiB      15.2%
 
 ---
 
+### 5.4 Galería de Evidencias Reales en Producción sobre AWS (Capturas de Pantalla)
+
+A continuación se presentan las capturas de pantalla tomadas directamente sobre la plataforma en vivo desplegada en AWS tras el balanceador de carga (`voting-alb`):
+
+#### Captura 1: Comprobante Electoral Ciudadano — Elección Nacional 2026 (Sello SHA-256)
+Demuestra la emisión exitosa del voto en la **Elección Nacional 2026** para la ciudadana **Valentina Burbano** (Cédula `1138504215`, Ciudad Pasto, Región SUR), votando por el candidato *Andrés Salazar*. El sistema generó el ticket digital **`TKT-NAC-6AD6D1B3B1`**, procesado por el nodo **`aws-node-1-us-east-1a`** con sello criptográfico SHA-256 **`832B7FDA86087FEE`**. Al intentar votar nuevamente con esta misma cédula, el sistema bloquea la transacción con `HTTP 409` y despliega este comprobante existente.
+
+![Comprobante Electoral Oficial Elección Nacional 2026 con Sello SHA-256](docs/evidencias/comprobante_voto_nacional_sha256.png)
+
+---
+
+#### Captura 2: Comprobante Electoral Ciudadano — Elección Regional 2026 (Sello SHA-256)
+Demuestra el sufragio emitido en la **Elección Regional 2026** para la misma ciudadana en la región SUR, votando por la candidata regional *Valentina Ríos*. Se generó el ticket **`TKT-REG-F3FB390005`**, procesado por el nodo **`aws-node-1-us-east-1a`** con sello criptográfico SHA-256 **`542DAB8B067E3E83`**, evidenciando la independencia de ambas elecciones sobre el mismo censo de votantes.
+
+![Comprobante Electoral Oficial Elección Regional 2026 con Sello SHA-256](docs/evidencias/comprobante_voto_regional_sha256.png)
+
+---
+
+#### Captura 3: Panel de Monitoreo de KPIs Reales vs. Simulados y KTable Kafka
+Evidencia en tiempo real de la telemetría electoral en el Panel de Administración:
+- **Total Votos Consolidados:** 4.476 (Nacional: 2.268 · Regional: 2.208).
+- **Votos Reales (Ciudadanos):** 4 votos legítimos auditados.
+- **Votos Simulados (En Vivo):** 4.472 votos de prueba estocástica distribuidos vía Kafka.
+- **Padrón KTable (Kafka):** 22 cédulas registradas en memoria y 5 tickets únicos de votación.
+- **Alertas Anti-Fraude (Patrón State):** 4 IPs y cédulas sospechosas/bloqueadas detectadas.
+
+![Panel de KPIs en Vivo: Separación Estricta de Votos Reales vs Simulados](docs/evidencias/kpis_votos_reales_vs_simulados.png)
+
+---
+
+#### Captura 4: Consolidación de Tablas Nacional y Regional Ponderada (Patrón Strategy)
+Muestra la interfaz de escrutinio en tiempo real dividida en:
+- **Tabla 1 (Nacional):** Consolidación por candidato difundida cada 1s mediante el Exchange **Fanout** de RabbitMQ.
+- **Tabla 2 (Regional):** Desglose por regiones con la aplicación en vivo del patrón **GoF Strategy** (`CENTRO x1.40`, `NORTE x1.25`, `SUR x1.15`, `OESTE x1.05`, `ESTE x0.90`), calculando los puntos ponderados sobre los votos brutos.
+
+![Tablas de Escrutinio en Vivo: Consolidado Nacional y Regional Ponderado por Strategy](docs/evidencias/tablas_consolidadas_en_vivo.png)
+
+---
+
+#### Captura 5: Centro de Control Administrativo, Mapa Interactivo de Colombia y Telegram en Vivo
+Evidencia de la integración completa en producción:
+- **Control Electoral (Patrón GoF State):** Botones `HABILITADO`, `EN_AUDITORIA` y `CERRADO` con sincronización atómica.
+- **Simulador de Tráfico:** Ráfagas controladas de votos hacia Kafka.
+- **Comprobación de Balanceo AWS ALB:** Monitoreo activo de Round-Robin entre nodos `aws-node-1` y `aws-node-2`.
+- **Bot de Telegram en Vivo (`@VotCol_bot`):** Feed de actividad en tiempo real mostrando las consultas, simulaciones y cambios de estado ejecutados por el jurado evaluador.
+- **Mapa Electoral Interactivo de Colombia:** Renderizado con OpenStreetMap, destacando en naranja pulsante las ubicaciones de votos ciudadanos reales (**Pasto** y **Bogotá**) y en turquesa los votos simulados.
+
+![Panel Administrativo, Mapa Interactivo de Colombia y Feed de Telegram en Vivo](docs/evidencias/admin_mapa_telegram_en_vivo.png)
+
+---
+
+#### Captura 6: Tablero Oficial de Proyección de Segunda Vuelta Electoral
+Visualización de la página `/prediccion.html` con la regla constitucional del 50% + 1, cálculo de intervalos de confianza del 95% e identificación algorítmica de los 2 candidatos punteros que pasan al balotaje, decorado con paleta `#20B2A6` y retratos oficiales de los candidatos.
+
+![Proyección Oficial de Segunda Vuelta con Intervalos de Confianza y Regla 50% + 1](docs/evidencias/prediccion_segunda_vuelta.png)
+
+---
+
+#### Captura 7: Inicialización y Gobernanza de Contenedores en AWS CloudShell
+Evidencia del arranque inicial de la infraestructura sobre el nodo Core en AWS (`voting-core-node`, `i-0622a7cb6db892da8`), con los 4 contenedores (`postgres`, `kafka-kraft`, `rabbitmq` y `stream-processor`) en estado *Up (healthy)* con gobernanza cgroups de memoria y CPU.
+
+![Inicialización de Contenedores Saludables en AWS CloudShell Core Node](docs/evidencias/aws_cloudshell_core_node.png)
+
+---
+
 ## 6. Seguridad Implementada
 
 ### 6.1 Autenticación Institucional del Panel de Administración
