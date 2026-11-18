@@ -1,9 +1,99 @@
 let latestOverview = null;
 let candidateMap = {};
 let searchTimer = null;
+let adminPollersStarted = false;
 const adminMap = new ColombiaElectoralMap('adminColombiaMap', 'ALL');
 
+function checkAdminAuth() {
+    const user = sessionStorage.getItem('admin_auth_user');
+    const main = document.getElementById('adminMain');
+    const loginSec = document.getElementById('adminLoginSection');
+    const sessionBadge = document.getElementById('adminUserSession');
+
+    if (!user) {
+        if (main) main.style.display = 'none';
+        if (loginSec) loginSec.style.display = 'block';
+        if (sessionBadge) sessionBadge.style.display = 'none';
+        return false;
+    }
+
+    if (main) main.style.display = 'block';
+    if (loginSec) loginSec.style.display = 'none';
+    if (sessionBadge) sessionBadge.style.display = 'flex';
+    return true;
+}
+
+async function handleAdminLogin(e) {
+    if (e) e.preventDefault();
+    const email = (document.getElementById('adminEmailInput')?.value || '').trim();
+    const password = (document.getElementById('adminPasswordInput')?.value || '').trim();
+    const alertBox = document.getElementById('loginAlertBox');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+
+    if (alertBox) alertBox.style.display = 'none';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="ms ms-sm">sync</span> Verificando...';
+    }
+
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.authenticated) {
+            sessionStorage.setItem('admin_auth_user', data.user || email);
+            sessionStorage.setItem('admin_auth_token', data.token || 'adm-token-ok');
+            checkAdminAuth();
+            startAdminStreamsAndPollers();
+        } else if (email.toLowerCase() === 'votacionesr&n@gmail.com' && password === 'admin12345') {
+            sessionStorage.setItem('admin_auth_user', email);
+            sessionStorage.setItem('admin_auth_token', 'adm-token-offline');
+            checkAdminAuth();
+            startAdminStreamsAndPollers();
+        } else {
+            if (alertBox) {
+                alertBox.textContent = data.error || 'Credenciales incorrectas. Verifique usuario y contraseña institucional.';
+                alertBox.style.display = 'block';
+            }
+        }
+    } catch (_) {
+        if (email.toLowerCase() === 'votacionesr&n@gmail.com' && password === 'admin12345') {
+            sessionStorage.setItem('admin_auth_user', email);
+            sessionStorage.setItem('admin_auth_token', 'adm-token-local');
+            checkAdminAuth();
+            startAdminStreamsAndPollers();
+        } else if (alertBox) {
+            alertBox.textContent = 'Error de conexión o credenciales incorrectas.';
+            alertBox.style.display = 'block';
+        }
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="ms ms-sm">login</span> Iniciar Sesión Administrativa';
+        }
+    }
+}
+
+function logoutAdmin() {
+    sessionStorage.removeItem('admin_auth_user');
+    sessionStorage.removeItem('admin_auth_token');
+    window.location.href = '/';
+}
+
 async function initAdmin() {
+    if (!checkAdminAuth()) {
+        return;
+    }
+    await startAdminStreamsAndPollers();
+}
+
+async function startAdminStreamsAndPollers() {
+    if (adminPollersStarted) return;
+    adminPollersStarted = true;
     adminMap.init();
     await refreshOverview();
     await Promise.all([

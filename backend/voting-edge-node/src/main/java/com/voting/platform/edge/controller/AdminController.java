@@ -66,6 +66,29 @@ public class AdminController {
         this.availabilityZone = availabilityZone;
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, Object>> login(@RequestBody(required = false) Map<String, String> credentials) {
+        String email = credentials != null ? credentials.getOrDefault("email", "").trim() : "";
+        String password = credentials != null ? credentials.getOrDefault("password", "").trim() : "";
+
+        if ("votacionesR&N@gmail.com".equalsIgnoreCase(email) && "admin12345".equals(password)) {
+            return ResponseEntity.ok(Map.of(
+                "authenticated", true,
+                "user", "votacionesR&N@gmail.com",
+                "role", "SUPER_ADMIN",
+                "token", "adm-token-" + Integer.toHexString(Objects.hash(email, password, nodeId)),
+                "servedByNode", nodeId,
+                "timestamp", Instant.now().toString()
+            ));
+        }
+
+        return ResponseEntity.status(401).body(Map.of(
+            "authenticated", false,
+            "error", "Credenciales administrativas inválidas. Verifique correo institucional y contraseña.",
+            "servedByNode", nodeId
+        ));
+    }
+
     @GetMapping("/overview")
     public ResponseEntity<Map<String, Object>> overview() {
         postgresRepository.incrementNodeRequests(false);

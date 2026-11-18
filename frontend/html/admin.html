@@ -29,11 +29,62 @@
                     <span class="pulse-dot"></span>
                     <span id="adminNodeLabel">Conectando AWS...</span>
                 </span>
+                <div id="adminUserSession" style="display: none; align-items: center; gap: 0.5rem; margin-left: 0.4rem;">
+                    <span class="badge badge-ok" style="font-size: 0.72rem; padding: 0.28rem 0.6rem;" title="Administrador Autenticado">
+                        <span class="ms ms-sm">verified_user</span> votacionesR&N@gmail.com
+                    </span>
+                    <button class="btn btn-outline btn-sm" onclick="logoutAdmin()" style="color: #ef4444; border-color: #fca5a5;" title="Cerrar sesión de Administrador">
+                        <span class="ms ms-sm">logout</span> Salir de Sesión
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
 
-    <main class="container">
+    <!-- Login Card si no está autenticado -->
+    <section id="adminLoginSection" class="container" style="max-width: 460px; margin: 3.5rem auto; display: none;">
+        <div class="card" style="box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-top: 4px solid var(--brand); padding: 2rem;">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="width: 58px; height: 58px; margin: 0 auto 0.8rem; background: var(--brand-soft); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--brand);">
+                    <span class="ms" style="font-size: 30px;">admin_panel_settings</span>
+                </div>
+                <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--ink);">Autenticación de Administrador</h2>
+                <p style="font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.35rem;">Ingreso restringido al Centro de Administración Electoral y Auditoría AWS</p>
+            </div>
+
+            <div id="loginAlertBox" style="display: none; padding: 0.65rem 0.85rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;"></div>
+
+            <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.8rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Usuario / Correo Institucional</label>
+                    <div style="position: relative;">
+                        <input type="email" id="adminEmailInput" class="form-control" value="votacionesR&N@gmail.com" required style="padding-left: 2.2rem; width: 100%;">
+                        <span class="ms ms-sm" style="position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--ink-soft);">mail</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="font-size: 0.8rem; font-weight: 700; display: block; margin-bottom: 0.35rem;">Contraseña de Seguridad</label>
+                    <div style="position: relative;">
+                        <input type="password" id="adminPasswordInput" class="form-control" placeholder="admin12345" required style="padding-left: 2.2rem; width: 100%;">
+                        <span class="ms ms-sm" style="position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--ink-soft);">key</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.65rem 1rem; font-size: 0.9rem;" id="loginSubmitBtn">
+                    <span class="ms ms-sm">login</span> Iniciar Sesión Administrativa
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                <a href="/" style="font-size: 0.82rem; color: var(--brand); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 600;">
+                    <span class="ms ms-sm">arrow_back</span> Volver a la Cabina de Votación (Página Principal)
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <main class="container" id="adminMain">
         <!-- Row 1: KPIs -->
         <section class="kpi-grid">
             <div class="kpi-card kpi-teal">
