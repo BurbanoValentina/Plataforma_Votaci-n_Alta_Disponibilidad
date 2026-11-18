@@ -4,6 +4,7 @@ import com.voting.platform.domain.aggregate.VoteCounterAggregate;
 import com.voting.platform.domain.model.GlobalResultRecord;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.port.GlobalResultPublisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class VoteProcessorService {
     private final VoteCounterAggregate counterAggregate;
     private final GlobalResultPublisher resultPublisher;
 
+    @Autowired
     public VoteProcessorService(GlobalResultPublisher resultPublisher) {
         this(new VoteCounterAggregate(), resultPublisher);
     }

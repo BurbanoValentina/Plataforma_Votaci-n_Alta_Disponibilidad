@@ -5,6 +5,7 @@ import com.voting.platform.domain.model.SecurityAlertRecord;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.port.SecurityAlertPublisher;
 import com.voting.platform.domain.port.SecurityIncidentRepositoryPort;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -21,6 +22,7 @@ public class BotDetectorService {
     private final SecurityAlertPublisher alertPublisher;
     private final SecurityIncidentRepositoryPort incidentRepository;
 
+    @Autowired
     public BotDetectorService(
         SecurityAlertPublisher alertPublisher,
         SecurityIncidentRepositoryPort incidentRepository

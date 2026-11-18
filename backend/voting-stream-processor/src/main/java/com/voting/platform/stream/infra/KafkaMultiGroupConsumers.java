@@ -98,8 +98,8 @@ public class KafkaMultiGroupConsumers {
         // Launch 4 independent Kafka Consumer Groups over raw_votes
         executor.submit(() -> consumeLoop("global-vote-processor", "earliest", voteProcessorService::processVote));
         executor.submit(() -> consumeLoop("regional-rollup-service", "earliest", regionalRollupService::processRegionalVote));
-        executor.submit(() -> consumeLoop("bot-detector-service", "latest", botDetectorService::analyzeVote));
-        executor.submit(() -> consumeLoop("analytics-archiver-service", "latest", analyticsArchiverService::archiveVote));
+        executor.submit(() -> consumeLoop("bot-detector-service", "earliest", botDetectorService::analyzeVote));
+        executor.submit(() -> consumeLoop("analytics-archiver-service", "earliest", analyticsArchiverService::archiveVote));
     }
 
     private void bootstrapEligibleVoters() {

@@ -8,6 +8,7 @@ import com.voting.platform.domain.port.RegionalResultPublisher;
 import com.voting.platform.domain.strategy.ElectoralWeightingStrategy;
 import com.voting.platform.domain.strategy.RegionalStrategyContext;
 import com.voting.platform.domain.strategy.RegionalWeightingStrategy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,7 @@ public class RegionalRollupService {
     private final RegionalStrategyContext strategyContext;
     private final RegionalResultPublisher resultPublisher;
 
+    @Autowired
     public RegionalRollupService(RegionalResultPublisher resultPublisher) {
         this(
             new RegionalVoteCounterAggregate(),
