@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.voting.platform.domain.model.EligibleVoterRecord;
 import com.voting.platform.domain.model.Region;
+import com.voting.platform.domain.model.SecurityAlertRecord;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoterId;
 import com.voting.platform.domain.port.EligibleVoterPublisher;
+import com.voting.platform.domain.port.SecurityAlertPublisher;
 import com.voting.platform.domain.port.VoteEventPublisher;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -40,15 +42,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *    to materialize the local in-memory KTable in sync across all AWS App Nodes.
  * 2. Publishes verified votes to compacted topic `raw_votes` keyed by voterId:electionType.
  * 3. Publishes newly enrolled / revoked voters to compacted topic `eligible_voters`.
+ * 4. Publishes fraud & impersonation alerts to Kafka topic `security_alerts`.
  */
 @Component
-public class KafkaEdgeClient implements VoteEventPublisher, EligibleVoterPublisher {
+public class KafkaEdgeClient implements VoteEventPublisher, EligibleVoterPublisher, SecurityAlertPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(KafkaEdgeClient.class);
 
     private final String bootstrapServers;
     private final String eligibleVotersTopic;
     private final String rawVotesTopic;
+    private final String securityAlertsTopic;
     private final String nodeId;
     private final InMemoryEligibilityStore eligibilityStore;
     private final ObjectMapper objectMapper;
@@ -61,12 +65,14 @@ public class KafkaEdgeClient implements VoteEventPublisher, EligibleVoterPublish
         @Value("${voting.kafka.bootstrap-servers:kafka:9092}") String bootstrapServers,
         @Value("${voting.kafka.topic.eligible-voters:eligible_voters}") String eligibleVotersTopic,
         @Value("${voting.kafka.topic.raw-votes:raw_votes}") String rawVotesTopic,
+        @Value("${voting.kafka.topic.security-alerts:security_alerts}") String securityAlertsTopic,
         @Value("${voting.node-id:voting-edge-1}") String nodeId,
         InMemoryEligibilityStore eligibilityStore
     ) {
         this.bootstrapServers = bootstrapServers;
         this.eligibleVotersTopic = eligibleVotersTopic;
         this.rawVotesTopic = rawVotesTopic;
+        this.securityAlertsTopic = securityAlertsTopic;
         this.nodeId = nodeId;
         this.eligibilityStore = Objects.requireNonNull(eligibilityStore, "eligibilityStore cannot be null");
         this.objectMapper = new ObjectMapper().findAndRegisterModules();
@@ -108,6 +114,7 @@ public class KafkaEdgeClient implements VoteEventPublisher, EligibleVoterPublish
                     log.error("[{}] Kafka raw_votes send error: {}", nodeId, ex.getMessage());
                 }
             });
+            p.flush();
         } catch (Exception e) {
             log.error("[{}] Failed serializing VoteRecord: {}", nodeId, e.getMessage());
         }
@@ -126,12 +133,24 @@ public class KafkaEdgeClient implements VoteEventPublisher, EligibleVoterPublish
         }
     }
 
+    @Override
+    public void publishSecurityAlert(SecurityAlertRecord alert) {
+        Objects.requireNonNull(alert, "alert cannot be null");
+        KafkaProducer<String, String> p = ensureProducer();
+        if (p == null) return;
+        try {
+            String json = objectMapper.writeValueAsString(alert);
+            p.send(new ProducerRecord<>(securityAlertsTopic, alert.ipAddress().value(), json));
+        } catch (Exception e) {
+            log.error("[{}] Failed publishing security alert: {}", nodeId, e.getMessage());
+        }
+    }
+
     public void publishVoterRevocation(VoterId voterId) {
         Objects.requireNonNull(voterId, "voterId cannot be null");
         eligibilityStore.removeEligible(voterId);
         KafkaProducer<String, String> p = ensureProducer();
         if (p == null) return;
-        // Tombstone record (null payload) in Kafka compacted topic removes voter across all nodes
         p.send(new ProducerRecord<>(eligibleVotersTopic, voterId.value(), null));
     }
 

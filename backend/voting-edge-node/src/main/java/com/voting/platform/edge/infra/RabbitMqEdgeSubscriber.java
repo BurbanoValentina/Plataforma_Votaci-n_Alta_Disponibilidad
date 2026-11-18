@@ -14,19 +14,18 @@ import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Per-node RabbitMQ Subscriber for horizontally scaled Edge Nodes.
- * Each AWS App Node creates its own exclusive auto-delete queues bound to:
- * - Fanout Exchange `live_results_global` -> guarantees EVERY edge node gets global updates!
- * - Topic Exchange `live_results_regional` (binding `results.*`) -> guarantees EVERY edge node gets regional updates!
+ * Self-healing per-node RabbitMQ Subscriber for horizontally scaled Edge Nodes.
+ * Automatically reconnects and re-declares per-node Fanout & Topic queues if the broker
+ * restarts or if no messages arrive for more than 12 seconds.
  */
 @Component
 public class RabbitMqEdgeSubscriber {
@@ -44,7 +43,7 @@ public class RabbitMqEdgeSubscriber {
     private final ObjectMapper objectMapper;
 
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final AtomicLong lastMessageAtMs = new AtomicLong(0L);
     private volatile Connection connection;
     private volatile Channel channel;
 
@@ -71,80 +70,92 @@ public class RabbitMqEdgeSubscriber {
 
     @PostConstruct
     public void start() {
-        executor.submit(this::connectWithRetry);
+        ensureSubscribed();
     }
 
-    private void connectWithRetry() {
-        while (running.get()) {
-            try {
-                ConnectionFactory factory = new ConnectionFactory();
-                factory.setHost(host);
-                factory.setPort(port);
-                factory.setUsername(username);
-                factory.setPassword(password);
-                factory.setAutomaticRecoveryEnabled(true);
-                factory.setConnectionTimeout(4000);
-
-                this.connection = factory.newConnection("edge-subscriber-" + nodeId);
-                this.channel = connection.createChannel();
-
-                // Declare Fanout & Topic exchanges
-                channel.exchangeDeclare(globalExchange, BuiltinExchangeType.FANOUT, true);
-                channel.exchangeDeclare(regionalExchange, BuiltinExchangeType.TOPIC, true);
-
-                // Per-node exclusive auto-delete queues so BOTH AWS ALB nodes receive every message!
-                String globalQueue = channel.queueDeclare("", false, true, true, null).getQueue();
-                channel.queueBind(globalQueue, globalExchange, "");
-
-                String regionalQueue = channel.queueDeclare("", false, true, true, null).getQueue();
-                channel.queueBind(regionalQueue, regionalExchange, "results.*");
-
-                DeliverCallback globalCb = (tag, delivery) -> {
-                    try {
-                        String json = new String(delivery.getBody(), StandardCharsets.UTF_8);
-                        GlobalResultRecord record = objectMapper.readValue(json, GlobalResultRecord.class);
-                        broadcastService.onGlobalResult(record);
-                    } catch (Exception e) {
-                        log.debug("[{}] Global message parse error: {}", nodeId, e.getMessage());
-                    }
-                };
-
-                DeliverCallback regionalCb = (tag, delivery) -> {
-                    try {
-                        String json = new String(delivery.getBody(), StandardCharsets.UTF_8);
-                        RegionalResultRecord record = objectMapper.readValue(json, RegionalResultRecord.class);
-                        broadcastService.onRegionalResult(record);
-                    } catch (Exception e) {
-                        log.debug("[{}] Regional message parse error: {}", nodeId, e.getMessage());
-                    }
-                };
-
-                channel.basicConsume(globalQueue, true, globalCb, tag -> {});
-                channel.basicConsume(regionalQueue, true, regionalCb, tag -> {});
-
-                log.info("[{}] RabbitMQ subscribed -> Fanout({}) & Topic({} [results.*])",
-                    nodeId, globalExchange, regionalExchange);
-                return;
-            } catch (Exception e) {
-                log.warn("[{}] RabbitMQ subscriber waiting for broker ({}:{}): {}", host, port, nodeId, e.getMessage());
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            }
+    @Scheduled(fixedDelay = 10000)
+    public void monitorLiveness() {
+        if (!running.get()) return;
+        boolean closed = (channel == null || !channel.isOpen() || connection == null || !connection.isOpen());
+        boolean stale = (lastMessageAtMs.get() > 0 && (System.currentTimeMillis() - lastMessageAtMs.get()) > 15000);
+        if (closed || stale) {
+            log.info("[{}] Re-establishing RabbitMQ subscriber (closed={}, stale={})", nodeId, closed, stale);
+            closeQuietly();
+            ensureSubscribed();
         }
+    }
+
+    private synchronized void ensureSubscribed() {
+        if (!running.get()) return;
+        try {
+            ConnectionFactory factory = new ConnectionFactory();
+            factory.setHost(host);
+            factory.setPort(port);
+            factory.setUsername(username);
+            factory.setPassword(password);
+            factory.setAutomaticRecoveryEnabled(false);
+            factory.setConnectionTimeout(4000);
+
+            this.connection = factory.newConnection("edge-subscriber-" + nodeId);
+            this.channel = connection.createChannel();
+
+            channel.exchangeDeclare(globalExchange, BuiltinExchangeType.FANOUT, true);
+            channel.exchangeDeclare(regionalExchange, BuiltinExchangeType.TOPIC, true);
+
+            String globalQueue = channel.queueDeclare("", false, true, true, null).getQueue();
+            channel.queueBind(globalQueue, globalExchange, "");
+
+            String regionalQueue = channel.queueDeclare("", false, true, true, null).getQueue();
+            channel.queueBind(regionalQueue, regionalExchange, "results.*");
+
+            DeliverCallback globalCb = (tag, delivery) -> {
+                try {
+                    lastMessageAtMs.set(System.currentTimeMillis());
+                    String json = new String(delivery.getBody(), StandardCharsets.UTF_8);
+                    GlobalResultRecord record = objectMapper.readValue(json, GlobalResultRecord.class);
+                    broadcastService.onGlobalResult(record);
+                } catch (Exception e) {
+                    log.debug("[{}] Global message parse error: {}", nodeId, e.getMessage());
+                }
+            };
+
+            DeliverCallback regionalCb = (tag, delivery) -> {
+                try {
+                    lastMessageAtMs.set(System.currentTimeMillis());
+                    String json = new String(delivery.getBody(), StandardCharsets.UTF_8);
+                    RegionalResultRecord record = objectMapper.readValue(json, RegionalResultRecord.class);
+                    broadcastService.onRegionalResult(record);
+                } catch (Exception e) {
+                    log.debug("[{}] Regional message parse error: {}", nodeId, e.getMessage());
+                }
+            };
+
+            channel.basicConsume(globalQueue, true, globalCb, tag -> {});
+            channel.basicConsume(regionalQueue, true, regionalCb, tag -> {});
+            lastMessageAtMs.set(System.currentTimeMillis());
+
+            log.info("[{}] RabbitMQ subscribed -> Fanout({}) & Topic({} [results.*])",
+                nodeId, globalExchange, regionalExchange);
+        } catch (Exception e) {
+            log.warn("[{}] RabbitMQ connect deferred ({}:{}): {}", nodeId, host, port, e.getMessage());
+            closeQuietly();
+        }
+    }
+
+    private void closeQuietly() {
+        try {
+            if (channel != null && channel.isOpen()) channel.close();
+        } catch (Exception ignored) {}
+        try {
+            if (connection != null && connection.isOpen()) connection.close();
+        } catch (Exception ignored) {}
+        channel = null;
+        connection = null;
     }
 
     @PreDestroy
     public void close() {
         running.set(false);
-        executor.shutdownNow();
-        try {
-            if (channel != null && channel.isOpen()) channel.close();
-            if (connection != null && connection.isOpen()) connection.close();
-        } catch (Exception ignored) {
-        }
+        closeQuietly();
     }
 }

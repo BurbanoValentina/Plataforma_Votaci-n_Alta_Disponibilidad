@@ -19,6 +19,7 @@
             <div class="nav-links">
                 <a class="nav-link" href="/">Cabina de Votación</a>
                 <a class="nav-link active" href="/admin.html">Panel de Administración</a>
+                <a class="nav-link" href="/prediccion.html">Segunda Vuelta</a>
                 <a class="nav-link" href="/dashboard-global.html">Resultados Nacionales</a>
                 <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
                 <span class="node-pill">
@@ -281,18 +282,21 @@
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Tabla 5: Alertas Anti-Fraude (Patrón State)</div>
-                        <div class="card-subtitle">Transiciones NORMAL → SOSPECHOSA → BLOQUEADA (PostgreSQL + Kafka security_alerts)</div>
+                        <div class="card-title">Tabla 5: Alertas Anti-Fraude y Bloqueos Activos (Patrón State)</div>
+                        <div class="card-subtitle">Detecta ataques Bot, votos duplicados repetidos y suplantación (misma cédula con distinto nombre)</div>
                     </div>
                     <button class="btn btn-outline btn-sm" onclick="refreshIncidents()">Refrescar</button>
                 </div>
-                <div class="table-wrap" style="max-height: 415px; overflow-y: auto;">
+
+                <div id="blockedEntitiesBox" style="margin-bottom: 0.9rem;"></div>
+
+                <div class="table-wrap" style="max-height: 360px; overflow-y: auto;">
                     <table>
                         <thead>
                             <tr>
                                 <th>IP Origen</th>
                                 <th>Nivel Riesgo</th>
-                                <th>Votos/Ventana</th>
+                                <th>Intentos</th>
                                 <th>Detalle</th>
                                 <th>Hora</th>
                             </tr>
@@ -300,6 +304,51 @@
                         <tbody id="incidentsTableBody"></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        <!-- Row 6: Telegram Bot API Integration -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Integración API Bot de Telegram (Notificaciones y Comandos en Vivo)</div>
+                    <div class="card-subtitle">Conecta tu bot creado en @BotFather para recibir alertas de votos reales, intentos de suplantación/fraude y consultar resultados por comando</div>
+                </div>
+                <span class="badge badge-neutral" id="tgStatusBadge">NO CONFIGURADO</span>
+            </div>
+
+            <form onsubmit="saveTelegramConfig(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; align-items: end;">
+                <div>
+                    <label for="tgBotToken">Bot Token (de @BotFather)</label>
+                    <input type="text" id="tgBotToken" placeholder="Ej: 7123456789:AAH...">
+                </div>
+                <div>
+                    <label for="tgChatId">Chat ID (tu usuario o grupo)</label>
+                    <input type="text" id="tgChatId" placeholder="Ej: 123456789 o -100123456">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.82rem;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600;">
+                        <input type="checkbox" id="tgEnabled" style="width: auto;"> Activar envío automático a Telegram
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600;">
+                        <input type="checkbox" id="tgNotifyVotes" checked style="width: auto;"> Notificar votos REALES
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600;">
+                        <input type="checkbox" id="tgNotifyFraud" checked style="width: auto;"> Notificar alertas Anti-Fraude / Suplantación
+                    </label>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary btn-sm">Guardar Config</button>
+                    <button type="button" class="btn btn-success btn-sm" onclick="testTelegram()">Probar Conexión</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="sendTelegramSummary()">Enviar Resumen Ahora</button>
+                </div>
+            </form>
+
+            <div id="tgFeedback" style="font-size: 0.82rem; color: var(--ink-muted); margin-top: 0.75rem;"></div>
+            <div style="margin-top: 0.75rem; padding: 0.75rem 0.9rem; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; font-size: 0.8rem; color: var(--ink-muted);">
+                <strong>Endpoint Webhook listo para Bot de Telegram:</strong>
+                <code class="mono" id="tgWebhookUrl">/api/telegram/webhook</code>
+                — Comandos soportados: <code>/resultados</code>, <code>/segundavuelta</code>, <code>/ticket &lt;cedula&gt;</code>.
             </div>
         </div>
     </main>

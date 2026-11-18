@@ -1,6 +1,7 @@
 package com.voting.platform.edge.controller;
 
 import com.voting.platform.domain.exception.DuplicateVoteException;
+import com.voting.platform.domain.exception.SecurityThresholdExceededException;
 import com.voting.platform.domain.exception.VoterNotEligibleException;
 import com.voting.platform.domain.exception.VotingClosedException;
 import com.voting.platform.domain.exception.VotingInAuditException;
@@ -18,7 +19,8 @@ import java.util.stream.Collectors;
 
 /**
  * Centralized REST Exception Handler mapping rich domain exceptions to clean HTTP responses.
- * Returns HTTP 409 Conflict WITH the citizen's original official ticket on duplicate votes.
+ * - DuplicateVoteException -> HTTP 409 Conflict WITH original official ticket
+ * - SecurityThresholdExceededException -> HTTP 403 Forbidden (IP / Cedula blocked for fraud/impersonation)
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -39,6 +41,19 @@ public class GlobalExceptionHandler {
         body.put("nodeId", nodeId);
         body.put("timestamp", Instant.now().toString());
         return ResponseEntity.status(HttpStatus.CONFLICT)
+            .header("X-Node-Id", nodeId)
+            .body(body);
+    }
+
+    @ExceptionHandler(SecurityThresholdExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleSecurityBlock(SecurityThresholdExceededException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "SECURITY_BLOCKED");
+        body.put("blocked", true);
+        body.put("message", ex.getMessage());
+        body.put("nodeId", nodeId);
+        body.put("timestamp", Instant.now().toString());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
             .header("X-Node-Id", nodeId)
             .body(body);
     }

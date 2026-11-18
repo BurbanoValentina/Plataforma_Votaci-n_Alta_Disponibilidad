@@ -9,12 +9,14 @@ import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoteSource;
 import com.voting.platform.domain.model.VoteTicketCode;
 import com.voting.platform.domain.model.VoterId;
+import com.voting.platform.domain.port.NotificationPort;
 import com.voting.platform.edge.infra.InMemoryEligibilityStore;
 import com.voting.platform.edge.infra.KafkaEdgeClient;
 import com.voting.platform.edge.infra.PostgresEdgeRepository;
 import com.voting.platform.edge.service.DashboardBroadcastService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,8 +35,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Electoral Administration & Live Telemetry Controller (No login wall required).
- * Exposes all electoral tables, REAL vs SIMULATED comparisons, GoF State lifecycle controls,
- * Kafka KTable census management, RabbitMQ snapshots, and AWS Load Balancer node metrics.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -44,6 +44,7 @@ public class AdminController {
     private final DashboardBroadcastService broadcastService;
     private final InMemoryEligibilityStore eligibilityStore;
     private final KafkaEdgeClient kafkaEdgeClient;
+    private final NotificationPort notificationPort;
     private final String nodeId;
     private final String availabilityZone;
 
@@ -52,6 +53,7 @@ public class AdminController {
         DashboardBroadcastService broadcastService,
         InMemoryEligibilityStore eligibilityStore,
         KafkaEdgeClient kafkaEdgeClient,
+        NotificationPort notificationPort,
         @Value("${voting.node-id:voting-edge-1}") String nodeId,
         @Value("${voting.availability-zone:us-east-1a}") String availabilityZone
     ) {
@@ -59,6 +61,7 @@ public class AdminController {
         this.broadcastService = Objects.requireNonNull(broadcastService, "broadcastService cannot be null");
         this.eligibilityStore = Objects.requireNonNull(eligibilityStore, "eligibilityStore cannot be null");
         this.kafkaEdgeClient = Objects.requireNonNull(kafkaEdgeClient, "kafkaEdgeClient cannot be null");
+        this.notificationPort = notificationPort;
         this.nodeId = nodeId;
         this.availabilityZone = availabilityZone;
     }
@@ -66,6 +69,7 @@ public class AdminController {
     @GetMapping("/overview")
     public ResponseEntity<Map<String, Object>> overview() {
         postgresRepository.incrementNodeRequests(false);
+        broadcastService.forceRefreshNow();
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("servedByNode", nodeId);
         body.put("availabilityZone", availabilityZone);
@@ -158,9 +162,23 @@ public class AdminController {
     @GetMapping("/incidents")
     public ResponseEntity<Map<String, Object>> securityIncidents(@RequestParam(defaultValue = "50") int limit) {
         List<Map<String, Object>> incidents = postgresRepository.querySecurityIncidents(limit);
+        List<Map<String, Object>> blocked = postgresRepository.queryBlockedEntities();
         return ResponseEntity.ok()
             .header("X-Node-Id", nodeId)
-            .body(Map.of("servedByNode", nodeId, "count", incidents.size(), "incidents", incidents));
+            .body(Map.of(
+                "servedByNode", nodeId,
+                "count", incidents.size(),
+                "incidents", incidents,
+                "blockedEntities", blocked
+            ));
+    }
+
+    @DeleteMapping("/blocked/{entityKey}")
+    public ResponseEntity<Map<String, Object>> unblock(@PathVariable String entityKey) {
+        postgresRepository.unblockEntity(entityKey);
+        return ResponseEntity.ok()
+            .header("X-Node-Id", nodeId)
+            .body(Map.of("unblocked", entityKey, "servedByNode", nodeId));
     }
 
     @PostMapping("/lifecycle")
@@ -171,6 +189,9 @@ public class AdminController {
                 throw new IllegalArgumentException("Estado inválido. Use: HABILITADO, EN_AUDITORIA o CERRADO.");
             }
             postgresRepository.updateLifecycleStateName(nextState);
+            if (notificationPort != null) {
+                notificationPort.notifyLifecycleChange(nextState, nodeId);
+            }
         }
         if (payload.containsKey("strictCensusMode")) {
             boolean strict = Boolean.parseBoolean(String.valueOf(payload.get("strictCensusMode")));

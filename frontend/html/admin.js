@@ -4,7 +4,9 @@ let searchTimer = null;
 
 async function initAdmin() {
     await refreshOverview();
-    await Promise.all([refreshAuditVotes(), refreshVoters(), refreshIncidents()]);
+    await Promise.all([refreshAuditVotes(), refreshVoters(), refreshIncidents(), loadTelegramConfig()]);
+    const wh = document.getElementById('tgWebhookUrl');
+    if (wh) wh.textContent = window.location.origin + '/api/telegram/webhook';
     connectAdminStreams();
     setInterval(refreshOverview, 3000);
     setInterval(refreshAuditVotes, 5000);
@@ -379,9 +381,34 @@ async function refreshIncidents() {
         const res = await fetch('/api/admin/incidents?limit=40');
         if (!res.ok) return;
         const data = await res.json();
+
+        const blockedBox = document.getElementById('blockedEntitiesBox');
+        const blocked = data.blockedEntities || [];
+        if (blockedBox) {
+            if (!blocked.length) {
+                blockedBox.innerHTML = '';
+            } else {
+                blockedBox.innerHTML = `
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 0.75rem 0.9rem;">
+                        <div style="font-size: 0.78rem; font-weight: 800; color: #991b1b; margin-bottom: 0.45rem;">
+                            ENTIDADES BLOQUEADAS ACTIVAS (${blocked.length})
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                            ${blocked.map(b => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
+                                    <span><strong class="mono">${escapeHtml(b.entity_key)}</strong> — ${escapeHtml(b.reason)}</span>
+                                    <button class="btn btn-outline btn-sm" onclick="unblockEntity('${escapeHtml(b.entity_key)}')">Desbloquear</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         const tbody = document.getElementById('incidentsTableBody');
         if (!data.incidents || !data.incidents.length) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--ink-soft);">Sin incidentes detectados. Usa "Simular Ataque Bot" para probar el Patrón State.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--ink-soft);">Sin incidentes detectados.</td></tr>';
             return;
         }
         tbody.innerHTML = data.incidents.map(inc => {
@@ -398,6 +425,81 @@ async function refreshIncidents() {
             `;
         }).join('');
     } catch (_) {}
+}
+
+async function unblockEntity(entityKey) {
+    await fetch('/api/admin/blocked/' + encodeURIComponent(entityKey), { method: 'DELETE' });
+    refreshIncidents();
+    refreshOverview();
+}
+
+async function loadTelegramConfig() {
+    try {
+        const res = await fetch('/api/telegram/config');
+        if (!res.ok) return;
+        const cfg = await res.json();
+        document.getElementById('tgChatId').value = cfg.chatId || '';
+        document.getElementById('tgEnabled').checked = Boolean(cfg.enabled);
+        document.getElementById('tgNotifyVotes').checked = cfg.notifyVotes !== false;
+        document.getElementById('tgNotifyFraud').checked = cfg.notifyFraud !== false;
+        if (cfg.tokenConfigured) {
+            document.getElementById('tgBotToken').placeholder = 'Token guardado (escribe uno nuevo solo para reemplazar)';
+        }
+        const badge = document.getElementById('tgStatusBadge');
+        if (cfg.enabled && cfg.tokenConfigured) {
+            badge.textContent = 'CONECTADO Y ACTIVO';
+            badge.className = 'badge badge-ok';
+        } else if (cfg.tokenConfigured) {
+            badge.textContent = 'CONFIGURADO (PAUSADO)';
+            badge.className = 'badge badge-warn';
+        } else {
+            badge.textContent = 'LISTO PARA CONECTAR';
+            badge.className = 'badge badge-neutral';
+        }
+    } catch (_) {}
+}
+
+async function saveTelegramConfig(e) {
+    e.preventDefault();
+    const token = document.getElementById('tgBotToken').value.trim();
+    const chatId = document.getElementById('tgChatId').value.trim();
+    const enabled = document.getElementById('tgEnabled').checked;
+    const notifyVotes = document.getElementById('tgNotifyVotes').checked;
+    const notifyFraud = document.getElementById('tgNotifyFraud').checked;
+
+    const payload = { enabled, chatId, notifyVotes, notifyFraud };
+    if (token) payload.botToken = token;
+
+    const res = await fetch('/api/telegram/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+        document.getElementById('tgBotToken').value = '';
+        document.getElementById('tgFeedback').textContent = '✔ Configuración de Telegram guardada en PostgreSQL (sincronizada en todos los nodos AWS).';
+        loadTelegramConfig();
+    }
+}
+
+async function testTelegram() {
+    const fb = document.getElementById('tgFeedback');
+    fb.textContent = 'Enviando mensaje de prueba a Telegram...';
+    const res = await fetch('/api/telegram/test', { method: 'POST' });
+    const data = await res.json();
+    fb.textContent = data.ok
+        ? '✔ Mensaje de prueba enviado exitosamente a tu Telegram.'
+        : '✖ Error Telegram: ' + (data.error || data.response || 'Revisa Bot Token y Chat ID.');
+}
+
+async function sendTelegramSummary() {
+    const fb = document.getElementById('tgFeedback');
+    fb.textContent = 'Enviando resumen electoral y predicción de segunda vuelta...';
+    const res = await fetch('/api/telegram/send-summary', { method: 'POST' });
+    const data = await res.json();
+    fb.textContent = data.ok
+        ? '✔ Resumen electoral en vivo enviado a tu Telegram.'
+        : '✖ Error Telegram: ' + (data.error || data.response || 'Configura primero Bot Token y Chat ID.');
 }
 
 function escapeHtml(str) {

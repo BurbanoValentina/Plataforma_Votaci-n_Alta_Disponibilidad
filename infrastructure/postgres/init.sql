@@ -1,11 +1,11 @@
 -- ============================================================================
 -- PLATAFORMA DISTRIBUIDA DE VOTACIÓN DE ALTA DISPONIBILIDAD
--- DDL DE PERSISTENCIA TRANSACCIONAL, TICKETS Y AUDITORÍA FORENSE - POSTGRESQL
+-- DDL DE PERSISTENCIA TRANSACCIONAL, TICKETS, ANTI-FRAUDE Y TELEGRAM - POSTGRESQL
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. Estado global compartido de la plataforma (Patrón GoF State + Simulador)
+-- 1. Estado global compartido de la plataforma (Patrón GoF State + Simulador + Telegram)
 CREATE TABLE IF NOT EXISTS election_control (
     id INT PRIMARY KEY DEFAULT 1,
     lifecycle_state VARCHAR(32) NOT NULL DEFAULT 'HABILITADO',
@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS election_control (
     simulator_rate_ms INT NOT NULL DEFAULT 1800,
     simulator_batch_size INT NOT NULL DEFAULT 2,
     bot_attack_requested BOOLEAN NOT NULL DEFAULT FALSE,
+    telegram_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    telegram_bot_token VARCHAR(256) NOT NULL DEFAULT '',
+    telegram_chat_id VARCHAR(128) NOT NULL DEFAULT '',
+    telegram_notify_votes BOOLEAN NOT NULL DEFAULT TRUE,
+    telegram_notify_fraud BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -90,7 +95,16 @@ CREATE INDEX IF NOT EXISTS idx_security_incidents_ip ON security_incidents(ip_ad
 CREATE INDEX IF NOT EXISTS idx_security_incidents_level ON security_incidents(risk_level);
 CREATE INDEX IF NOT EXISTS idx_security_incidents_detected_at ON security_incidents(detected_at DESC);
 
--- 6. Telemetría de Distribución de Carga entre Nodos AWS
+-- 6. Bloqueos Activos Anti-Fraude (IPs y Cédulas bloqueadas por suplantación o repetición abusiva)
+CREATE TABLE IF NOT EXISTS blocked_entities (
+    entity_key VARCHAR(128) PRIMARY KEY,
+    entity_type VARCHAR(32) NOT NULL,
+    reason VARCHAR(512) NOT NULL,
+    attempt_count INT NOT NULL DEFAULT 1,
+    blocked_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. Telemetría de Distribución de Carga entre Nodos AWS
 CREATE TABLE IF NOT EXISTS node_telemetry (
     node_id VARCHAR(64) PRIMARY KEY,
     availability_zone VARCHAR(32) NOT NULL DEFAULT 'us-east-1',
