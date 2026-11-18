@@ -159,6 +159,12 @@ public class TelegramNotificationService implements NotificationPort {
 
         if (chatId == null || chatId.isBlank() || command == null || command.isBlank()) return;
 
+        // Auto-link Chat ID on first interaction so the user never has to search for their numeric Chat ID!
+        TelegramConfig currentCfg = resolveConfig();
+        if (currentCfg.chatId().isBlank()) {
+            postgresRepository.updateTelegramConfig(true, null, chatId, null, null);
+        }
+
         if (callbackId != null && !callbackId.isBlank()) {
             answerCallbackQuery(token, callbackId);
         }

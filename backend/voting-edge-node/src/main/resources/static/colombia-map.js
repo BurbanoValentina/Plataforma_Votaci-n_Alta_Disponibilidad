@@ -33,9 +33,9 @@ class ColombiaElectoralMap {
             scrollWheelZoom: false
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
-            maxZoom: 14
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO Voyager',
+            maxZoom: 16
         }).addTo(this.map);
 
         this.markersLayer = L.layerGroup().addTo(this.map);

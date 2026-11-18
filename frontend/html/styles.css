@@ -340,14 +340,22 @@ body {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 1.1rem 1.25rem;
+    padding: 1.15rem 1.25rem;
     box-shadow: var(--shadow-sm);
     transition: transform 0.16s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ink);
 }
 
 .kpi-card:hover { transform: translateY(-2px); }
 
-.kpi-card.brand { background: var(--brand-soft); border-color: var(--brand-border); }
+.kpi-card.kpi-teal { background: var(--brand-soft); border-color: var(--brand-border); color: var(--ink); }
+.kpi-card.kpi-teal .kpi-label { color: var(--brand-darker); }
+.kpi-card.kpi-teal .kpi-value { color: #0b4f4a; }
 .kpi-card.real { background: var(--real-soft); border-color: var(--real-border); }
 .kpi-card.sim { background: var(--sim-soft); border-color: var(--sim-border); }
 .kpi-card.danger { background: var(--danger-soft); border-color: #fecaca; }
@@ -355,24 +363,28 @@ body {
 .kpi-label {
     font-size: 0.73rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     color: var(--ink-soft);
     font-weight: 800;
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    line-height: 1.3;
 }
 
 .kpi-value {
     font-size: 1.95rem;
     font-weight: 800;
-    margin: 0.22rem 0;
+    margin: 0.3rem 0;
     letter-spacing: -0.03em;
+    color: var(--ink);
+    line-height: 1.15;
 }
 
 .kpi-meta {
-    font-size: 0.79rem;
+    font-size: 0.78rem;
     color: var(--ink-muted);
+    line-height: 1.35;
 }
 
 /* Election Type Switcher */
