@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados Regionales Ponderados — Plataforma Electoral</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="/">
+                <div class="brand-seal">R</div>
+                <div>
+                    <div class="brand-title">Tablero Regional Ponderado</div>
+                    <div class="brand-sub">RabbitMQ Topic Exchange (results.*) + GoF Patrón Strategy</div>
+                </div>
+            </a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Cabina de Votación</a>
+                <a class="nav-link" href="/admin.html">Panel de Administración</a>
+                <a class="nav-link" href="/dashboard-global.html">Resultados Nacionales</a>
+                <a class="nav-link active" href="/dashboard-regional.html">Resultados Regionales</a>
+                <span class="node-pill"><span class="pulse-dot"></span><span id="statusText">En Vivo (5s)</span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="card" style="background: #eff6ff; border-color: #bfdbfe;">
+            <strong>Patrón GoF Strategy (ElectoralWeightingStrategy):</strong>
+            CENTRO (x1.40) · NORTE (x1.25) · SUR (x1.15) · OESTE (x1.05) · ESTE (x0.90) — Enrutamiento reactivo por <code>results.&lt;region&gt;</code>.
+        </div>
+
+        <div class="grid-equal" id="regionsGrid"></div>
+    </main>
+
+    <script>
+        let candidateNames = {};
+        const regionsState = { CENTRO: null, NORTE: null, SUR: null, OESTE: null, ESTE: null };
+
+        async function boot() {
+            const cat = await (await fetch('/api/catalog')).json();
+            [...(cat.nationalCandidates || []), ...(cat.regionalCandidates || [])].forEach(c => {
+                candidateNames[c.id] = c.name;
+            });
+
+            const init = await (await fetch('/api/results/regional')).json();
+            Object.assign(regionsState, init);
+            render();
+
+            const es = new EventSource('/api/results/regional/stream');
+            es.addEventListener('regional-init', e => { Object.assign(regionsState, JSON.parse(e.data)); render(); });
+            es.addEventListener('regional-update', e => {
+                const u = JSON.parse(e.data);
+                if (u && u.region) { regionsState[u.region] = u; render(); }
+            });
+            es.onopen = () => document.getElementById('statusText').textContent = 'En Vivo (5s)';
+            es.onerror = () => document.getElementById('statusText').textContent = 'Reconectando...';
+        }
+
+        function render() {
+            const grid = document.getElementById('regionsGrid');
+            grid.innerHTML = Object.entries(regionsState).map(([reg, data]) => {
+                const total = Number(data?.totalRegionalVotes || 0);
+                const realTot = Number(data?.totalRealVotes || 0);
+                const simTot = Number(data?.totalSimulatedVotes || 0);
+                const mult = Number(data?.weightMultiplier || 1.0);
+                const raw = data?.rawVotes || {};
+                const reals = data?.realVotes || {};
+                const sims = data?.simulatedVotes || {};
+                const weighted = data?.weightedVotes || {};
+
+                const keys = Object.keys(raw).sort((a, b) => (weighted[b] || 0) - (weighted[a] || 0));
+                const body = keys.length === 0
+                    ? '<div style="color: var(--ink-soft); font-size: 0.85rem;">Esperando votos de esta región...</div>'
+                    : keys.map(id => {
+                        const r = Number(reals[id] || 0);
+                        const s = Number(sims[id] || 0);
+                        const t = Number(raw[id] || 0);
+                        const w = Number(weighted[id] || 0);
+                        const rPct = total > 0 ? (r / total) * 100 : 0;
+                        const sPct = total > 0 ? (s / total) * 100 : 0;
+                        return `
+                            <div style="margin-bottom: 0.85rem;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                                    <strong>${candidateNames[id] || id}</strong>
+                                    <span>
+                                        <span style="color: #047857; font-weight: 700;">${r}R</span> /
+                                        <span style="color: #4f46e5;">${s}S</span> ·
+                                        <strong style="color: #6b21a8;">${w.toFixed(1)} pts</strong>
+                                    </span>
+                                </div>
+                                <div class="stacked-bar" style="height: 12px;">
+                                    <div class="bar-real" style="width: ${rPct}%"></div>
+                                    <div class="bar-sim" style="width: ${sPct}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                return `
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">Región ${reg}</div>
+                                <div class="card-subtitle">${realTot} Reales · ${simTot} Simulados</div>
+                            </div>
+                            <span class="badge badge-reg">x${mult.toFixed(2)} · ${total} votos</span>
+                        </div>
+                        ${body}
+                    </div>
+                `;
+            }).join('');
+        }
+        boot();
+    </script>
+</body>
+</html>

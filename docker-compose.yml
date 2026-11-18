@@ -1,19 +1,20 @@
-version: '3.8'
+# ============================================================================
+# PLATAFORMA DISTRIBUIDA DE VOTACIÓN DE ALTA DISPONIBILIDAD (ENTORNO LOCAL)
+# Arquitectura optimizada: 7 contenedores totales (antes 14) CON balanceo de
+# carga real entre 2 nodos edge, Kafka en modo KRaft (sin Zookeeper),
+# RabbitMQ Fanout/Topic, PostgreSQL privado y gobernanza de recursos (cgroups).
+# ============================================================================
 
 networks:
-  voting-net:
+  voting-private-net:
     driver: bridge
 
 volumes:
   pgdata:
   kafkadata:
-  zookeeperdata:
   rabbitmqdata:
 
 services:
-  # ========================================================
-  # CAPA DE PERSISTENCIA: PostgreSQL (Auditoría Forense)
-  # ========================================================
   postgres:
     image: postgres:15-alpine
     container_name: voting-postgres
@@ -26,9 +27,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - voting-net
-    ports:
-      - "${DB_PORT:-5432}:5432"
+      - voting-private-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-voting_user} -d ${DB_NAME:-voting_db}"]
       interval: 10s
@@ -43,65 +42,37 @@ services:
           cpus: '0.25'
           memory: 256M
 
-  # ========================================================
-  # CAPA DE BROKERS Y ESTADO: Zookeeper & Apache Kafka
-  # ========================================================
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: voting-zookeeper
-    restart: always
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeperdata:/var/lib/zookeeper/data
-    networks:
-      - voting-net
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 384M
-        reservations:
-          cpus: '0.20'
-          memory: 192M
-
   kafka:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: voting-kafka
+    container_name: voting-kafka-kraft
     restart: always
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-    ports:
-      - "${KAFKA_PORT:-9092}:9092"
-      - "${KAFKA_HOST_PORT:-29092}:29092"
     volumes:
       - kafkadata:/var/lib/kafka/data
     networks:
-      - voting-net
+      - voting-private-net
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_LOG_CLEANUP_POLICY: compact
       KAFKA_LOG_CLEANER_ENABLE: "true"
       KAFKA_LOG_CLEANER_MIN_CLEANABLE_RATIO: "0.01"
-      KAFKA_LOG_CLEANER_DELETE_RETENTION_MS: "86400000"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9092"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 8
     deploy:
       resources:
         limits:
@@ -111,36 +82,6 @@ services:
           cpus: '0.50'
           memory: 512M
 
-  kafka-init:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: voting-kafka-init
-    depends_on:
-      kafka:
-        condition: service_healthy
-    networks:
-      - voting-net
-    entrypoint: [ "/bin/sh", "-c" ]
-    command: |
-      "
-      cub kafka-ready -b kafka:9092 1 40
-      
-      echo 'Creando topics compactados en Kafka...'
-      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --topic eligible_voters --partitions 3 --replication-factor 1 --config cleanup.policy=compact --config min.cleanable.dirty.ratio=0.01
-      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --topic raw_votes --partitions 3 --replication-factor 1 --config cleanup.policy=compact --config min.cleanable.dirty.ratio=0.01
-      kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --topic security_alerts --partitions 3 --replication-factor 1
-      
-      echo 'Topics creados exitosamente:'
-      kafka-topics --list --bootstrap-server kafka:9092
-      "
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 128M
-
-  # ========================================================
-  # CAPA DE DISTRIBUCIÓN REACTIVA: RabbitMQ
-  # ========================================================
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: voting-rabbitmq
@@ -150,15 +91,12 @@ services:
       - ./infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./infrastructure/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     networks:
-      - voting-net
-    ports:
-      - "${RABBITMQ_PORT:-5672}:5672"
-      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+      - voting-private-net
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 6
     deploy:
       resources:
         limits:
@@ -168,136 +106,59 @@ services:
           cpus: '0.25'
           memory: 256M
 
-  # ========================================================
-  # MICROSERVICIOS SPRING BOOT (JDK 17) - BACKEND
-  # ========================================================
-
-  # 1. Servicio de Arranque y Registro de Votantes Elegibles
-  voter-registration-service:
+  voting-stream-processor:
     build:
       context: ./backend
-      dockerfile: voter-registration-service/Dockerfile
-    container_name: voting-voter-registration-service
-    restart: on-failure
-    depends_on:
-      kafka:
-        condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
-    networks:
-      - voting-net
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 384M
-        reservations:
-          cpus: '0.20'
-          memory: 192M
-
-  # 2. Gateway HTTP y Validador Local de Elegibilidad (KTable)
-  voting-api:
-    build:
-      context: ./backend
-      dockerfile: voting-api/Dockerfile
-    container_name: voting-api-gateway
+      dockerfile: voting-stream-processor/Dockerfile
+    container_name: voting-stream-processor
     restart: always
-    ports:
-      - "${VOTING_API_PORT:-8085}:8080"
     depends_on:
+      postgres:
+        condition: service_healthy
       kafka:
         condition: service_healthy
-      voter-registration-service:
-        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
-      - voting-net
+      - voting-private-net
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-voting_db}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-voting_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-0512971401}
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
     deploy:
       resources:
         limits:
           cpus: '1.00'
-          memory: 512M
+          memory: 640M
         reservations:
           cpus: '0.30'
-          memory: 256M
+          memory: 320M
 
-  # 3. Contador Global Stateful y Publicador Fanout RabbitMQ (1s)
-  vote-processor:
+  voting-edge-1:
     build:
       context: ./backend
-      dockerfile: vote-processor/Dockerfile
-    container_name: voting-vote-processor
+      dockerfile: voting-edge-node/Dockerfile
+    container_name: voting-edge-1
     restart: always
     depends_on:
-      kafka:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - voting-net
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.75'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-
-  # 4. Contador Regional Stateful y Publicador Topic RabbitMQ (5s)
-  regional-rollup-service:
-    build:
-      context: ./backend
-      dockerfile: regional-rollup-service/Dockerfile
-    container_name: voting-regional-rollup-service
-    restart: always
-    depends_on:
-      kafka:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - voting-net
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.75'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-
-  # 5. Anti-Fraude Stateful (Patrón State) y Registro Forense en PostgreSQL
-  bot-detector-service:
-    build:
-      context: ./backend
-      dockerfile: bot-detector-service/Dockerfile
-    container_name: voting-bot-detector-service
-    restart: always
-    depends_on:
-      kafka:
-        condition: service_healthy
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
-      - voting-net
+      - voting-private-net
     environment:
+      NODE_ID: local-edge-node-1
+      AVAILABILITY_ZONE: local-az-a
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-voting_db}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-voting_user}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-0512971401}
@@ -311,22 +172,27 @@ services:
           cpus: '0.25'
           memory: 256M
 
-  # 6. Persistencia y Auditoría Transaccional en PostgreSQL
-  analytics-archiver:
+  voting-edge-2:
     build:
       context: ./backend
-      dockerfile: analytics-archiver/Dockerfile
-    container_name: voting-analytics-archiver
+      dockerfile: voting-edge-node/Dockerfile
+    container_name: voting-edge-2
     restart: always
     depends_on:
-      kafka:
-        condition: service_healthy
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
-      - voting-net
+      - voting-private-net
     environment:
+      NODE_ID: local-edge-node-2
+      AVAILABILITY_ZONE: local-az-b
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-voting_db}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-voting_user}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-0512971401}
@@ -340,81 +206,23 @@ services:
           cpus: '0.25'
           memory: 256M
 
-  # 7. UI Dashboard Web Global (Worker SSE)
-  global-dashboard-worker:
-    build:
-      context: ./backend
-      dockerfile: global-dashboard-worker/Dockerfile
-    container_name: voting-global-dashboard-worker
-    restart: always
-    ports:
-      - "${GLOBAL_DASHBOARD_PORT:-8082}:8082"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - voting-net
-    environment:
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 384M
-        reservations:
-          cpus: '0.20'
-          memory: 192M
-
-  # 8. UI Dashboard Web Regional (Worker SSE)
-  regional-dashboard-worker:
-    build:
-      context: ./backend
-      dockerfile: regional-dashboard-worker/Dockerfile
-    container_name: voting-regional-dashboard-worker
-    restart: always
-    ports:
-      - "${REGIONAL_DASHBOARD_PORT:-8083}:8083"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - voting-net
-    environment:
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 384M
-        reservations:
-          cpus: '0.20'
-          memory: 192M
-
-  # ========================================================
-  # GATEWAY WEB NGINX (Matching HotelSpringBoot Frontend)
-  # ========================================================
-  web-gateway:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: voting-web-gateway
+  load-balancer:
+    image: nginx:1.25-alpine
+    container_name: voting-load-balancer
     restart: always
     depends_on:
-      - voting-api
-      - global-dashboard-worker
-      - regional-dashboard-worker
+      - voting-edge-1
+      - voting-edge-2
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
       - "${FRONTEND_PORT:-80}:80"
     networks:
-      - voting-net
+      - voting-private-net
     deploy:
       resources:
         limits:
-          cpus: '0.50'
+          cpus: '0.35'
           memory: 128M
         reservations:
           cpus: '0.10'

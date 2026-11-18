@@ -13,10 +13,10 @@
 
     <groupId>com.voting.platform</groupId>
     <artifactId>voting-platform-parent</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
     <packaging>pom</packaging>
     <name>Voting Platform Parent</name>
-    <description>Plataforma de Votación de Alta Disponibilidad</description>
+    <description>Plataforma Distribuida de Votación de Alta Disponibilidad (AWS ALB + Kafka + RabbitMQ + PostgreSQL)</description>
 
     <properties>
         <java.version>17</java.version>
@@ -27,14 +27,8 @@
 
     <modules>
         <module>common-domain</module>
-        <module>voter-registration-service</module>
-        <module>voting-api</module>
-        <module>vote-processor</module>
-        <module>regional-rollup-service</module>
-        <module>bot-detector-service</module>
-        <module>analytics-archiver</module>
-        <module>global-dashboard-worker</module>
-        <module>regional-dashboard-worker</module>
+        <module>voting-edge-node</module>
+        <module>voting-stream-processor</module>
     </modules>
 
     <dependencyManagement>

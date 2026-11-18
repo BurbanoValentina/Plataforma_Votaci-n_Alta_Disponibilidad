@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados Nacionales en Vivo — Plataforma Electoral</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="/">
+                <div class="brand-seal">N</div>
+                <div>
+                    <div class="brand-title">Tablero Nacional en Tiempo Real</div>
+                    <div class="brand-sub">Kafka Stateful Aggregation + RabbitMQ Fanout Exchange (1s)</div>
+                </div>
+            </a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Cabina de Votación</a>
+                <a class="nav-link" href="/admin.html">Panel de Administración</a>
+                <a class="nav-link active" href="/dashboard-global.html">Resultados Nacionales</a>
+                <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
+                <span class="node-pill"><span class="pulse-dot"></span><span id="statusText">En Vivo (1s)</span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Votos Nacionales</div>
+                <div class="kpi-value" id="totalNac">0</div>
+                <div class="kpi-meta">Consolidado Fanout Exchange</div>
+            </div>
+            <div class="kpi-card real">
+                <div class="kpi-label" style="color: #047857;">Votos Reales (Ciudadanos)</div>
+                <div class="kpi-value" style="color: #065f46;" id="totalReal">0</div>
+                <div class="kpi-meta">Verificados con cédula y ticket</div>
+            </div>
+            <div class="kpi-card sim">
+                <div class="kpi-label" style="color: #3730a3;">Votos Simulados (En Vivo)</div>
+                <div class="kpi-value" style="color: #312e81;" id="totalSim">0</div>
+                <div class="kpi-meta">Flujo continuo de estrés</div>
+            </div>
+        </section>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Resultados por Candidato — Elección Nacional 2026</div>
+                    <div class="card-subtitle">Verde: Votos Reales · Índigo: Votos Simulados</div>
+                </div>
+                <span class="badge badge-neutral" id="updatedAt">Esperando transmisión...</span>
+            </div>
+            <div id="candidatesBoard"></div>
+        </div>
+    </main>
+
+    <script>
+        let candidates = [];
+        async function boot() {
+            const catRes = await fetch('/api/catalog');
+            const cat = await catRes.json();
+            candidates = cat.nationalCandidates || [];
+            const res = await fetch('/api/results/global');
+            if (res.ok) render(await res.json());
+
+            const es = new EventSource('/api/results/global/stream');
+            es.addEventListener('global-results', e => render(JSON.parse(e.data)));
+            es.onopen = () => document.getElementById('statusText').textContent = 'En Vivo (1s)';
+            es.onerror = () => document.getElementById('statusText').textContent = 'Reconectando...';
+        }
+
+        function render(data) {
+            const nacTotal = Number(data.totalNationalVotes || 0);
+            const totals = data.nationalCandidateVotes || {};
+            const reals = data.nationalRealVotes || {};
+            const sims = data.nationalSimulatedVotes || {};
+
+            const realSum = Object.values(reals).reduce((a, b) => a + Number(b), 0);
+            const simSum = Object.values(sims).reduce((a, b) => a + Number(b), 0);
+
+            document.getElementById('totalNac').textContent = nacTotal.toLocaleString('es-CO');
+            document.getElementById('totalReal').textContent = realSum.toLocaleString('es-CO');
+            document.getElementById('totalSim').textContent = simSum.toLocaleString('es-CO');
+            document.getElementById('updatedAt').textContent = 'Actualizado: ' + new Date(data.generatedAt || Date.now()).toLocaleTimeString('es-CO');
+
+            const sorted = [...candidates].sort((a, b) => (totals[b.id] || 0) - (totals[a.id] || 0));
+            document.getElementById('candidatesBoard').innerHTML = sorted.map(c => {
+                const t = Number(totals[c.id] || 0);
+                const r = Number(reals[c.id] || 0);
+                const s = Number(sims[c.id] || 0);
+                const pct = nacTotal > 0 ? ((t / nacTotal) * 100).toFixed(1) : '0.0';
+                const rPct = nacTotal > 0 ? (r / nacTotal) * 100 : 0;
+                const sPct = nacTotal > 0 ? (s / nacTotal) * 100 : 0;
+                return `
+                    <div style="margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                            <div>
+                                <strong style="font-size: 1.05rem;">#${c.ballotNumber} ${c.name}</strong>
+                                <span style="font-size: 0.82rem; color: var(--ink-soft); margin-left: 0.5rem;">${c.party}</span>
+                            </div>
+                            <div style="font-size: 0.9rem;">
+                                <span class="badge badge-real">${r.toLocaleString('es-CO')} Reales</span>
+                                <span class="badge badge-sim">${s.toLocaleString('es-CO')} Simulados</span>
+                                <strong style="margin-left: 0.4rem;">${t.toLocaleString('es-CO')} (${pct}%)</strong>
+                            </div>
+                        </div>
+                        <div class="stacked-bar" style="height: 20px;">
+                            <div class="bar-real" style="width: ${rPct}%"></div>
+                            <div class="bar-sim" style="width: ${sPct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        boot();
+    </script>
+</body>
+</html>

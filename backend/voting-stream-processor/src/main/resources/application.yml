@@ -1,0 +1,34 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: voting-stream-processor
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/voting_db}
+    username: ${SPRING_DATASOURCE_USERNAME:voting_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:0512971401}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 10000
+
+voting:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    topic:
+      eligible-voters: eligible_voters
+      raw-votes: raw_votes
+      security-alerts: security_alerts
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+    exchange:
+      global: live_results_global
+      regional: live_results_regional
+
+logging:
+  level:
+    com.voting.platform: INFO
+    org.apache.kafka: WARN

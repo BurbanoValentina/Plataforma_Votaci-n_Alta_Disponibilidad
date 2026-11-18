@@ -1,0 +1,148 @@
+# ============================================================================
+# AWS EC2 CORE NODE (voting-core-node — us-east-1a)
+# Solo 4 contenedores: PostgreSQL + Kafka KRaft + RabbitMQ + Stream Processor
+# Seguridad: Puertos 5432, 9092, 5672 expuestos SOLO dentro del Security Group
+# privado de la VPC hacia voting-app-node-1 y voting-app-node-2.
+# ============================================================================
+
+networks:
+  voting-core-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  kafkadata:
+  rabbitmqdata:
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: voting-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-voting_db}
+      POSTGRES_USER: ${DB_USER:-voting_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-0512971401}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../../infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - voting-core-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-voting_user} -d ${DB_NAME:-voting_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: voting-kafka-kraft
+    restart: always
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    networks:
+      - voting-core-net
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_LISTENERS: 'INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'INTERNAL://kafka:29092,EXTERNAL://${CORE_PRIVATE_IP}:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_CLEANUP_POLICY: compact
+      KAFKA_LOG_CLEANER_ENABLE: "true"
+      KAFKA_LOG_CLEANER_MIN_CLEANABLE_RATIO: "0.01"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1024M
+        reservations:
+          cpus: '0.50'
+          memory: 512M
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: voting-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+      - ../../infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ../../infrastructure/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    networks:
+      - voting-core-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  voting-stream-processor:
+    build:
+      context: ../../backend
+      dockerfile: voting-stream-processor/Dockerfile
+    container_name: voting-stream-processor
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    networks:
+      - voting-core-net
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-voting_db}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-voting_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-0512971401}
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 640M
+        reservations:
+          cpus: '0.30'
+          memory: 320M

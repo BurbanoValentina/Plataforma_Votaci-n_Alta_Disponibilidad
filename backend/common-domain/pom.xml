@@ -7,14 +7,14 @@
     <parent>
         <groupId>com.voting.platform</groupId>
         <artifactId>voting-platform-parent</artifactId>
-        <version>1.0.0</version>
+        <version>2.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>common-domain</artifactId>
     <packaging>jar</packaging>
-    <name>Common Domain</name>
-    <description>Core domain models, immutable value objects, records, and design patterns</description>
+    <name>Voting Common Domain</name>
+    <description>Pure Java 17+ POO Domain Model, Value Objects, Aggregates, Strategy &amp; State Patterns, DIP Ports</description>
 
     <dependencies>
         <dependency>
@@ -22,23 +22,8 @@
             <artifactId>jakarta.validation-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <!-- Test dependencies -->
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -47,5 +32,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
 </project>

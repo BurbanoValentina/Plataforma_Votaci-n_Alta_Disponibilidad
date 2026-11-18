@@ -3,205 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reality Show Live Voting - Web Portal</title>
-    <style>
-        :root {
-            --bg: #0f172a;
-            --card-bg: #1e293b;
-            --accent: #6366f1;
-            --accent-hover: #4f46e5;
-            --text: #f8fafc;
-            --text-dim: #94a3b8;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --border: #334155;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: var(--bg); color: var(--text); padding: 2rem; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 2.5rem; }
-        h1 { font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #a5b4fc, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        p.subtitle { color: var(--text-dim); margin-top: 0.5rem; font-size: 1.1rem; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
-        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .card h2 { font-size: 1.3rem; margin-bottom: 1rem; color: #e2e8f0; display: flex; align-items: center; gap: 0.5rem; }
-        .btn { display: inline-block; width: 100%; text-align: center; background: var(--accent); color: white; padding: 0.75rem 1rem; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 1rem; transition: background 0.2s; border: none; cursor: pointer; }
-        .btn:hover { background: var(--accent-hover); }
-        .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; background: var(--border); color: var(--text-dim); }
-        .badge.green { background: #064e3b; color: #6ee7b7; }
-        .badge.blue { background: #1e3a8a; color: #93c5fd; }
-        .badge.amber { background: #78350f; color: #fde68a; }
-        ul.features { list-style: none; margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-dim); }
-        ul.features li { margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-        ul.features li::before { content: "✔"; color: var(--success); }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.25rem; }
-        input, select { width: 100%; background: #0b1120; border: 1px solid var(--border); color: white; padding: 0.6rem; border-radius: 6px; }
-        #response-box { margin-top: 1rem; padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.85rem; display: none; }
-    </style>
-    <style>
-        :root { --bg: #f7f9fc; --card-bg: #ffffff; --accent: #315a85; --accent-hover: #24496f; --text: #243247; --text-dim: #64748b; --success: #27845b; --success-soft: #ddf3e7; --blue-soft: #eaf2fa; --amber-soft: #fff4db; --border: #e2e8f0; --shadow: 0 12px 30px rgba(36, 50, 71, .08); }
-        * { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        body { background: radial-gradient(circle at top right, #eaf2fa 0, transparent 35%), var(--bg); color: var(--text); padding: clamp(1rem, 3vw, 3rem); min-height: 100vh; }
-        .container { max-width: 1200px; }
-        header { margin-bottom: 2.5rem; padding: clamp(1.5rem, 4vw, 3rem) 1rem 1rem; }
-        h1 { font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1.1; letter-spacing: -.04em; color: var(--accent); background: none; -webkit-text-fill-color: initial; }
-        p.subtitle { color: var(--text-dim); margin-top: .75rem; font-size: 1.05rem; }
-        .grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
-        .card { background: rgba(255,255,255,.94); border: 1px solid var(--border); border-radius: 18px; padding: clamp(1.25rem, 2.5vw, 1.75rem); box-shadow: var(--shadow); transition: transform .2s ease, box-shadow .2s ease; }
-        .card:hover { transform: translateY(-3px); box-shadow: 0 18px 36px rgba(36, 50, 71, .12); }
-        .card h2 { color: var(--text); font-size: 1.18rem; flex-wrap: wrap; }
-        .card p { color: var(--text-dim) !important; line-height: 1.6; }
-        .card strong { color: var(--accent) !important; }
-        .btn { background: var(--accent); padding: .8rem 1rem; border-radius: 10px; font-weight: 700; box-shadow: 0 5px 12px rgba(49,90,133,.18); transition: background .2s, transform .2s, box-shadow .2s; }
-        .btn:hover { background: var(--accent-hover) !important; transform: translateY(-1px); box-shadow: 0 8px 16px rgba(49,90,133,.24); }
-        .btn:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(49,90,133,.25); outline-offset: 2px; }
-        .badge { padding: .3rem .6rem; font-size: .7rem; background: var(--blue-soft); color: var(--accent); }
-        .badge.green { background: var(--success-soft); color: var(--success); }
-        .badge.blue { background: var(--blue-soft); color: var(--accent); }
-        .badge.amber { background: var(--amber-soft); color: #9a6500; }
-        ul.features { color: var(--text-dim); margin-top: 1rem; }
-        ul.features li { margin-bottom: .65rem; line-height: 1.4; }
-        ul.features li::before { content: "✓"; color: var(--success); font-weight: 800; }
-        code { background: #f1f5f9; color: var(--accent); padding: .12rem .35rem; border-radius: 5px; font-size: .85em; }
-        label { color: var(--text); font-weight: 700; margin-bottom: .4rem; }
-        input, select { background: #fff; border: 1px solid var(--border); color: var(--text); padding: .75rem .8rem; border-radius: 10px; font-size: .95rem; }
-        input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(49,90,133,.1); outline: none; }
-        #response-box { padding: .8rem; border-radius: 10px; color: var(--text) !important; }
-        @media (max-width: 600px) { body { padding: .75rem; } header { margin-bottom: 1rem; } .card { border-radius: 14px; } }
-    </style>
+    <title>Plataforma Oficial de Votación — Nacional y Regional</title>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Plataforma de Votación de Alta Disponibilidad</h1>
-            <p class="subtitle">Sistemas Operativos & Programación Orientada a Objetos — Grid Distribuido</p>
-        </header>
-
-        <div class="grid">
-            <!-- Global Dashboard Card -->
-            <div class="card">
-                <h2>🌐 Dashboard Global <span class="badge blue">Fanout 1s</span></h2>
-                <p style="color: var(--text-dim); font-size: 0.95rem;">
-                    Conteo global consolidado en tiempo real con deduplicación por usuario (Last Vote Wins).
-                </p>
-                <ul class="features">
-                    <li>RabbitMQ Fanout Exchange (<code>live_results_global</code>)</li>
-                    <li>Suscripción reactiva SSE / WebSockets</li>
-                    <li>Deduplicación atómica en memoria RAM</li>
-                </ul>
-                <a href="/dashboard-global.html" class="btn" target="_blank">Abrir Dashboard Global →</a>
-            </div>
-
-            <!-- Regional Dashboard Card -->
-            <div class="card">
-                <h2>🗺️ Dashboard Regional <span class="badge amber">Topic 5s</span></h2>
-                <p style="color: var(--text-dim); font-size: 0.95rem;">
-                    Desglose regional en tiempo real con algoritmos polimórficos de ponderación electoral.
-                </p>
-                <ul class="features">
-                    <li>Patrón GoF Strategy (<code>ElectoralWeightingStrategy</code>)</li>
-                    <li>RabbitMQ Topic Exchange (<code>results.*</code>)</li>
-                    <li>Multiplicadores: Norte, Sur, Centro, Este, Oeste</li>
-                </ul>
-                <a href="/dashboard-regional.html" class="btn" target="_blank">Abrir Dashboard Regional →</a>
-            </div>
-
-            <!-- Cast Vote Card -->
-            <div class="card">
-                <h2>🗳️ Emitir Voto en Vivo <span class="badge green">HTTP /vote</span></h2>
-                <form id="vote-form" onsubmit="submitVote(event)">
-                    <div class="form-group">
-                        <label>Votante ID (Elegibles: voter_001 al voter_020)</label>
-                        <input type="text" id="voterId" value="voter_001" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Candidato</label>
-                        <select id="candidateId">
-                            <option value="candidate_A">Candidato A (Luna)</option>
-                            <option value="candidate_B">Candidato B (Solar)</option>
-                            <option value="candidate_C">Candidato C (Cometa)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Región</label>
-                        <select id="region">
-                            <option value="NORTE">NORTE (1.25x)</option>
-                            <option value="SUR">SUR (1.15x)</option>
-                            <option value="CENTRO">CENTRO (1.40x)</option>
-                            <option value="ESTE">ESTE (0.90x)</option>
-                            <option value="OESTE">OESTE (1.05x)</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn" style="background: var(--success);">Enviar Voto</button>
-                </form>
-                <div id="response-box"></div>
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="/">
+                <div class="brand-seal">V</div>
+                <div>
+                    <div class="brand-title">Consejo Electoral Digital</div>
+                    <div class="brand-sub">Plataforma Distribuida de Alta Disponibilidad</div>
+                </div>
+            </a>
+            <div class="nav-links">
+                <a class="nav-link active" href="/">Cabina de Votación</a>
+                <a class="nav-link" href="/admin.html">Panel de Administración</a>
+                <a class="nav-link" href="/dashboard-global.html">Resultados Nacionales</a>
+                <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
+                <span class="node-pill" id="nodePill">
+                    <span class="pulse-dot"></span>
+                    <span id="activeNodeLabel">Conectando nodo AWS...</span>
+                </span>
             </div>
         </div>
+    </nav>
 
-        <div class="card">
-            <h2>🏗️ Arquitectura y Gobernanza del Sistema</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem; font-size: 0.9rem; color: var(--text-dim);">
-                <div>
-                    <strong style="color: #cbd5e1;">Apache Kafka Broker:</strong>
-                    <p>Topics compactados: <code>eligible_voters</code> (KTable), <code>raw_votes</code> (Deduplicación por key <code>user_id</code>), <code>security_alerts</code>.</p>
+    <main class="container">
+        <section class="hero">
+            <div>
+                <h1>Portal Ciudadano de Votación Electrónica</h1>
+                <p>
+                    Elija la elección <strong>Nacional</strong> o <strong>Regional</strong>, ingrese su cédula y ciudad,
+                    seleccione su candidato y obtenga su comprobante electoral verificable. Cada cédula puede emitir
+                    un único voto por elección.
+                </p>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-label">Estado Electoral</div>
+                    <div class="hero-stat-val" id="heroLifecycle">HABILITADO</div>
                 </div>
-                <div>
-                    <strong style="color: #cbd5e1;">RabbitMQ Bus:</strong>
-                    <p>Exchanges reactivos: Fanout <code>live_results_global</code> y Topic <code>live_results_regional</code> con routing keys <code>results.&lt;region&gt;</code>.</p>
+                <div class="hero-stat">
+                    <div class="hero-stat-label">Votos Reales</div>
+                    <div class="hero-stat-val" id="heroRealVotes">0</div>
                 </div>
-                <div>
-                    <strong style="color: #cbd5e1;">PostgreSQL Forense:</strong>
-                    <p>Tablas inmutables: <code>audit_votes</code> y <code>security_incidents</code> (Patrón State: Normal, Sospechosa, Bloqueada).</p>
+                <div class="hero-stat">
+                    <div class="hero-stat-label">Tráfico en Vivo</div>
+                    <div class="hero-stat-val" id="heroTotalVotes">0</div>
                 </div>
-                <div>
-                    <strong style="color: #cbd5e1;">Gobernanza SO & POO:</strong>
-                    <p>Límites estrictos de hardware (cgroups CPU/RAM), JVM MaxRAMPercentage=75%, Records Java 17+ inmutables, DIP y TDD.</p>
+            </div>
+        </section>
+
+        <div class="grid-2">
+            <!-- LEFT: Citizen Voting Booth -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">1. Seleccione el Tipo de Elección</div>
+                            <div class="card-subtitle">Puede participar una vez en Elección Nacional y una vez en Elección Regional</div>
+                        </div>
+                        <span class="badge badge-ok" id="stateBadge">HABILITADO</span>
+                    </div>
+
+                    <div class="election-tabs">
+                        <button type="button" class="election-tab active" id="tabNacional" onclick="selectElection('NACIONAL')">
+                            <div class="election-tab-title">
+                                <span>Elección Nacional 2026</span>
+                                <span class="badge badge-nac">Fanout 1s</span>
+                            </div>
+                            <div class="election-tab-desc">Presidencia / Consulta Nacional — Conteo consolidado en vivo</div>
+                        </button>
+                        <button type="button" class="election-tab" id="tabRegional" onclick="selectElection('REGIONAL')">
+                            <div class="election-tab-title">
+                                <span>Elección Regional 2026</span>
+                                <span class="badge badge-reg">Topic 5s</span>
+                            </div>
+                            <div class="election-tab-desc">Gobernaciones por Región — Ponderación electoral (Strategy)</div>
+                        </button>
+                    </div>
+
+                    <form id="voteForm" onsubmit="submitCitizenVote(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cedulaInput">Número de Cédula *</label>
+                                <input type="text" id="cedulaInput" placeholder="Ej: 1085321456" minlength="3" maxlength="64" required>
+                                <div class="helper-text">Verificada en tiempo real contra Kafka KTable y padrón único.</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="voterNameInput">Nombre Completo (para su comprobante)</label>
+                                <input type="text" id="voterNameInput" placeholder="Ej: Valentina Burbano" maxlength="100">
+                                <div class="helper-text">Opcional. Aparecerá impreso en su ticket electoral.</div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="citySelect">Ciudad de Votación *</label>
+                                <select id="citySelect" required onchange="onCityChanged()"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="regionDisplay">Región Electoral Asignada</label>
+                                <input type="text" id="regionDisplay" readonly style="background: #f8fafc; font-weight: 700;">
+                                <div class="helper-text" id="regionWeightHint">Factor de ponderación Strategy aplicado automáticamente.</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 0.5rem;">
+                            <label id="ballotTitle">2. Seleccione su Candidato — Elección Nacional 2026 *</label>
+                            <div class="ballot-grid" id="ballotGrid"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-block" id="submitVoteBtn">
+                            Verificar Cédula y Emitir Voto Oficial
+                        </button>
+                    </form>
+
+                    <div id="voteFeedback"></div>
+                    <div id="ticketContainer"></div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Ticket Verification + Live Snapshot -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Consultar mi Ticket Electoral</div>
+                            <div class="card-subtitle">Verifique si una cédula ya votó y recupere sus comprobantes</div>
+                        </div>
+                    </div>
+                    <form onsubmit="lookupTickets(event)" style="display: flex; gap: 0.6rem;">
+                        <input type="text" id="lookupCedulaInput" placeholder="Ingrese número de cédula..." required>
+                        <button type="submit" class="btn btn-primary">Consultar</button>
+                    </form>
+                    <div id="lookupResults" style="margin-top: 1rem;"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Transmisión en Tiempo Real</div>
+                            <div class="card-subtitle">Diferenciación en vivo: Votos Reales vs Tráfico Simulado</div>
+                        </div>
+                        <span class="badge badge-ok" id="sseBadge">SSE En Vivo</span>
+                    </div>
+
+                    <div style="display: flex; gap: 0.85rem; margin-bottom: 1rem; font-size: 0.8rem;">
+                        <span><span class="badge badge-real">● REALES</span> Ciudadanos verificados</span>
+                        <span><span class="badge badge-sim">● SIMULADOS</span> Flujo continuo</span>
+                    </div>
+
+                    <div id="livePreviewNational" style="margin-bottom: 1.15rem;">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #1e40af; margin-bottom: 0.5rem;">
+                            ELECCIÓN NACIONAL (Fanout 1s)
+                        </div>
+                        <div id="previewNacBars"></div>
+                    </div>
+
+                    <div id="livePreviewRegional">
+                        <div style="font-size: 0.82rem; font-weight: 800; color: #6b21a8; margin-bottom: 0.5rem;">
+                            ELECCIÓN REGIONAL (Topic 5s)
+                        </div>
+                        <div id="previewRegBars"></div>
+                    </div>
+
+                    <div style="margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.78rem; color: var(--ink-soft);" id="previewUpdated">Actualizando...</span>
+                        <a href="/admin.html" class="btn btn-outline btn-sm">Ir al Panel Administrador →</a>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <script>
-        async function submitVote(e) {
-            e.preventDefault();
-            const box = document.getElementById('response-box');
-            box.style.display = 'block';
-            box.style.background = '#1e293b';
-            box.style.color = '#94a3b8';
-            box.innerText = 'Enviando sufragio...';
-
-            const payload = {
-                voterId: document.getElementById('voterId').value.trim(),
-                candidateId: document.getElementById('candidateId').value,
-                region: document.getElementById('region').value,
-                clientIp: '192.168.1.' + Math.floor(Math.random() * 50 + 1)
-            };
-
-            try {
-                const res = await fetch('/vote', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    box.style.background = '#064e3b';
-                    box.style.color = '#6ee7b7';
-                    box.innerText = `[HTTP 200 OK] Voto registrado exitosamente para ${payload.voterId} -> ${payload.candidateId} (${payload.region})`;
-                } else {
-                    box.style.background = '#7f1d1d';
-                    box.style.color = '#fca5a5';
-                    box.innerText = `[HTTP ${res.status}] ${data.message || 'Voto Rechazado'}`;
-                }
-            } catch (err) {
-                box.style.background = '#7f1d1d';
-                box.style.color = '#fca5a5';
-                box.innerText = 'Error de conexión: ' + err.message;
-            }
-        }
-    </script>
-    <script type="module" src="./firebase-auth.js"></script>
+    <script src="/app.js"></script>
 </body>
 </html>

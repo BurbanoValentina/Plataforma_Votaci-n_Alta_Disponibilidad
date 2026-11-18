@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración Electoral — Monitoreo Distribuido en Tiempo Real</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="/">
+                <div class="brand-seal">A</div>
+                <div>
+                    <div class="brand-title">Centro de Administración Electoral</div>
+                    <div class="brand-sub">Distribución de Carga AWS · Kafka · RabbitMQ · PostgreSQL</div>
+                </div>
+            </a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Cabina de Votación</a>
+                <a class="nav-link active" href="/admin.html">Panel de Administración</a>
+                <a class="nav-link" href="/dashboard-global.html">Resultados Nacionales</a>
+                <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
+                <span class="node-pill">
+                    <span class="pulse-dot"></span>
+                    <span id="adminNodeLabel">Conectando AWS...</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Row 1: KPIs Differentiating REAL vs SIMULATED -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Votos Consolidados</div>
+                <div class="kpi-value" id="kpiTotal">0</div>
+                <div class="kpi-meta" id="kpiSplitElections">Nacional: 0 · Regional: 0</div>
+            </div>
+            <div class="kpi-card real">
+                <div class="kpi-label" style="color: #047857;">Votos Reales (Ciudadanos)</div>
+                <div class="kpi-value" style="color: #065f46;" id="kpiReal">0</div>
+                <div class="kpi-meta" id="kpiRealPct">0.0% del total emitido</div>
+            </div>
+            <div class="kpi-card sim">
+                <div class="kpi-label" style="color: #3730a3;">Votos Simulados (En Vivo)</div>
+                <div class="kpi-value" style="color: #312e81;" id="kpiSim">0</div>
+                <div class="kpi-meta" id="kpiSimPct">0.0% del total emitido</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Padrón KTable (Kafka)</div>
+                <div class="kpi-value" id="kpiVoters">0</div>
+                <div class="kpi-meta" id="kpiTickets">Tickets únicos emitidos: 0</div>
+            </div>
+            <div class="kpi-card danger">
+                <div class="kpi-label" style="color: #991b1b;">Alertas Anti-Fraude (State)</div>
+                <div class="kpi-value" style="color: #991b1b;" id="kpiIncidents">0</div>
+                <div class="kpi-meta">IPs sospechosas / bloqueadas</div>
+            </div>
+        </section>
+
+        <!-- Row 2: Controls (Lifecycle State Pattern + Live Simulator + AWS Load Balancing) -->
+        <div class="grid-equal">
+            <!-- Control del Ciclo Electoral (GoF State) -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Control Electoral (Patrón GoF State)</div>
+                        <div class="card-subtitle">Cambia el estado en todos los nodos AWS en tiempo real</div>
+                    </div>
+                    <span class="badge badge-ok" id="ctrlStateBadge">HABILITADO</span>
+                </div>
+                <div style="display: flex; gap: 0.55rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <button class="btn btn-success btn-sm" onclick="setLifecycle('HABILITADO')">HABILITADO</button>
+                    <button class="btn btn-warning btn-sm" onclick="setLifecycle('EN_AUDITORIA')">EN_AUDITORIA</button>
+                    <button class="btn btn-danger btn-sm" onclick="setLifecycle('CERRADO')">CERRADO</button>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 0.9rem; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px;">
+                    <div>
+                        <div style="font-size: 0.84rem; font-weight: 700;">Modo Censo Estricto (Kafka KTable)</div>
+                        <div style="font-size: 0.76rem; color: var(--ink-soft);">Si está activo, solo cédulas pre-registradas pueden votar (HTTP 403)</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="strictModeBtn" onclick="toggleStrictMode()">Desactivado</button>
+                </div>
+            </div>
+
+            <!-- Control del Simulador en Tiempo Real -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Simulador de Votación en Tiempo Real</div>
+                        <div class="card-subtitle">Genera tráfico SIMULADO continuo a través de Kafka y RabbitMQ</div>
+                    </div>
+                    <span class="badge badge-sim" id="simStatusBadge">ACTIVO</span>
+                </div>
+                <div style="display: flex; gap: 0.55rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+                    <button class="btn btn-primary btn-sm" id="simToggleBtn" onclick="toggleSimulator()">Pausar Simulador</button>
+                    <button class="btn btn-outline btn-sm" onclick="setSimSpeed(3000, 1)">Lento</button>
+                    <button class="btn btn-outline btn-sm" onclick="setSimSpeed(1800, 2)">Normal</button>
+                    <button class="btn btn-outline btn-sm" onclick="setSimSpeed(700, 4)">Alto / Estrés</button>
+                </div>
+                <div style="display: flex; gap: 0.55rem; flex-wrap: wrap;">
+                    <button class="btn btn-success btn-sm" onclick="triggerBurst()">⚡ Ráfaga +25 Votos Simulados</button>
+                    <button class="btn btn-danger btn-sm" onclick="triggerBotAttack()">🛡️ Simular Ataque Bot (IP)</button>
+                </div>
+                <div id="simFeedback" style="font-size: 0.8rem; color: var(--ink-muted); margin-top: 0.65rem;"></div>
+            </div>
+
+            <!-- Monitor de Distribución de Carga AWS -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Distribución de Carga (AWS ALB)</div>
+                        <div class="card-subtitle">Balanceo activo entre nodos de aplicación distribuidos</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="pingLoadBalancer()">Probar Balanceo</button>
+                </div>
+                <div id="nodesGrid" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
+                <div id="lbPingLog" style="font-size: 0.78rem; color: var(--ink-soft); margin-top: 0.65rem;"></div>
+            </div>
+        </div>
+
+        <!-- Row 3: Live Results Tables (Nacional & Regional) -->
+        <div class="grid-equal">
+            <!-- Tabla 1: Escrutinio Nacional -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Tabla 1: Elección Nacional 2026 (En Vivo)</div>
+                        <div class="card-subtitle">RabbitMQ Fanout Exchange (1s) — Reales vs Simulados</div>
+                    </div>
+                    <span class="badge badge-nac" id="nacTotalBadge">0 votos</span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Candidato</th>
+                                <th>Reales</th>
+                                <th>Simulados</th>
+                                <th>Total</th>
+                                <th>%</th>
+                                <th>Distribución</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nationalTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabla 2: Escrutinio Regional Ponderado -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Tabla 2: Elección Regional 2026 (Ponderada)</div>
+                        <div class="card-subtitle">RabbitMQ Topic Exchange (5s) + Patrón GoF Strategy</div>
+                    </div>
+                    <select id="regionFilterSelect" onchange="renderRegionalTable()" style="width: auto; padding: 0.35rem 0.65rem; font-size: 0.82rem;">
+                        <option value="ALL">Todas las regiones</option>
+                        <option value="CENTRO">CENTRO (x1.40)</option>
+                        <option value="NORTE">NORTE (x1.25)</option>
+                        <option value="SUR">SUR (x1.15)</option>
+                        <option value="OESTE">OESTE (x1.05)</option>
+                        <option value="ESTE">ESTE (x0.90)</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Región</th>
+                                <th>Candidato</th>
+                                <th>Reales</th>
+                                <th>Simulados</th>
+                                <th>Brutos</th>
+                                <th>Ponderado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regionalTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Master Audit Table (All Votes & Tickets from PostgreSQL) -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Tabla 3: Registro Completo de Votaciones y Tickets (Auditoría PostgreSQL)</div>
+                    <div class="card-subtitle">Filtra y diferencia en tiempo real votos ciudadanos REALES frente a votos SIMULADOS</div>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="refreshAuditVotes()">Actualizar Tabla</button>
+            </div>
+
+            <div class="toolbar">
+                <select id="filterElection" onchange="refreshAuditVotes()">
+                    <option value="ALL">Todas las elecciones</option>
+                    <option value="NACIONAL">Solo Nacional</option>
+                    <option value="REGIONAL">Solo Regional</option>
+                </select>
+                <select id="filterSource" onchange="refreshAuditVotes()">
+                    <option value="ALL">Reales + Simulados</option>
+                    <option value="REAL">Solo Votos REALES</option>
+                    <option value="SIMULATED">Solo Votos SIMULADOS</option>
+                </select>
+                <select id="filterRegion" onchange="refreshAuditVotes()">
+                    <option value="ALL">Todas las regiones</option>
+                    <option value="CENTRO">CENTRO</option>
+                    <option value="NORTE">NORTE</option>
+                    <option value="SUR">SUR</option>
+                    <option value="ESTE">ESTE</option>
+                    <option value="OESTE">OESTE</option>
+                </select>
+                <input type="text" id="filterSearch" placeholder="Buscar por cédula, ciudad o ticket..." oninput="debounceAuditSearch()" style="min-width: 240px;">
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Cédula</th>
+                            <th>Elección</th>
+                            <th>Candidato</th>
+                            <th>Ciudad / Región</th>
+                            <th>Origen</th>
+                            <th>Nodo AWS</th>
+                            <th>IP</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditVotesTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Row 5: Electoral Census (KTable) & Anti-Fraud Incidents (State Pattern) -->
+        <div class="grid-equal">
+            <!-- Tabla 4: Padrón Electoral KTable -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Tabla 4: Padrón Electoral (Kafka KTable)</div>
+                        <div class="card-subtitle">Habilita o inhabilita cédulas propagando eventos a Kafka eligible_voters</div>
+                    </div>
+                </div>
+
+                <form onsubmit="addNewVoter(event)" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="text" id="newVoterCedula" placeholder="Cédula" required>
+                    <input type="text" id="newVoterName" placeholder="Nombre" required>
+                    <select id="newVoterCity">
+                        <option value="Bogotá">Bogotá (CENTRO)</option>
+                        <option value="Medellín">Medellín (CENTRO)</option>
+                        <option value="Barranquilla">Barranquilla (NORTE)</option>
+                        <option value="Cali">Cali (OESTE)</option>
+                        <option value="Pasto">Pasto (SUR)</option>
+                        <option value="Cúcuta">Cúcuta (ESTE)</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">Registrar</button>
+                </form>
+
+                <div class="table-wrap" style="max-height: 360px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cédula</th>
+                                <th>Nombre</th>
+                                <th>Ciudad</th>
+                                <th>Votó</th>
+                                <th>Estado</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="votersTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabla 5: Incidentes Anti-Fraude -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Tabla 5: Alertas Anti-Fraude (Patrón State)</div>
+                        <div class="card-subtitle">Transiciones NORMAL → SOSPECHOSA → BLOQUEADA (PostgreSQL + Kafka security_alerts)</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="refreshIncidents()">Refrescar</button>
+                </div>
+                <div class="table-wrap" style="max-height: 415px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IP Origen</th>
+                                <th>Nivel Riesgo</th>
+                                <th>Votos/Ventana</th>
+                                <th>Detalle</th>
+                                <th>Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incidentsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/admin.js"></script>
+</body>
+</html>

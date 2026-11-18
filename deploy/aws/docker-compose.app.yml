@@ -1,0 +1,32 @@
+# ============================================================================
+# AWS EC2 APP NODE (voting-app-node-1 en us-east-1a / voting-app-node-2 en us-east-1b)
+# Solo 1 contenedor ligero por instancia EC2 detrás del AWS Application Load Balancer!
+# ============================================================================
+
+services:
+  voting-edge:
+    build:
+      context: ../../backend
+      dockerfile: voting-edge-node/Dockerfile
+    container_name: voting-edge-node
+    restart: always
+    ports:
+      - "80:8080"
+    environment:
+      NODE_ID: ${NODE_ID:-aws-node-1}
+      AVAILABILITY_ZONE: ${AVAILABILITY_ZONE:-us-east-1a}
+      KAFKA_BOOTSTRAP_SERVERS: ${CORE_PRIVATE_IP}:9092
+      RABBITMQ_HOST: ${CORE_PRIVATE_IP}
+      RABBITMQ_PORT: 5672
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${CORE_PRIVATE_IP}:5432/${DB_NAME:-voting_db}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-voting_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-0512971401}
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.50'
+          memory: 1024M
+        reservations:
+          cpus: '0.50'
+          memory: 384M

@@ -1,9 +1,11 @@
 package com.voting.platform.domain.aggregate;
 
 import com.voting.platform.domain.model.CandidateId;
+import com.voting.platform.domain.model.ElectionType;
 import com.voting.platform.domain.model.Region;
 import com.voting.platform.domain.model.RegionalResultRecord;
 import com.voting.platform.domain.model.VoteRecord;
+import com.voting.platform.domain.model.VoteSource;
 import com.voting.platform.domain.model.VoterId;
 import com.voting.platform.domain.strategy.RegionalStrategyContext;
 
@@ -18,21 +20,36 @@ import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Rich Domain Aggregate representing regional vote accumulation.
- * Deduplicates per voter across regions and applies the Strategy Pattern
- * to generate weighted regional results.
+ * Deduplicates per voter per election across regions, differentiates REAL vs SIMULATED votes,
+ * and applies the GoF Strategy Pattern to compute weighted regional scores.
  */
 public class RegionalVoteCounterAggregate {
 
-    private record VoterRegionalSelection(Region region, CandidateId candidateId) {}
+    private record VoterElectionKey(VoterId voterId, ElectionType electionType) {}
+    private record VoterRegionalSelection(Region region, CandidateId candidateId, VoteSource source) {}
 
-    private final ConcurrentHashMap<VoterId, VoterRegionalSelection> voterSelections;
+    private static final Map<Region, Double> WEIGHT_FACTORS = Map.of(
+        Region.NORTE, 1.25,
+        Region.SUR, 1.15,
+        Region.CENTRO, 1.40,
+        Region.ESTE, 0.90,
+        Region.OESTE, 1.05
+    );
+
+    private final ConcurrentHashMap<VoterElectionKey, VoterRegionalSelection> voterSelections;
     private final Map<Region, ConcurrentHashMap<String, LongAdder>> regionalTallies;
+    private final Map<Region, ConcurrentHashMap<String, LongAdder>> regionalRealTallies;
+    private final Map<Region, ConcurrentHashMap<String, LongAdder>> regionalSimulatedTallies;
 
     public RegionalVoteCounterAggregate() {
         this.voterSelections = new ConcurrentHashMap<>();
         this.regionalTallies = new EnumMap<>(Region.class);
+        this.regionalRealTallies = new EnumMap<>(Region.class);
+        this.regionalSimulatedTallies = new EnumMap<>(Region.class);
         for (Region r : Region.values()) {
             this.regionalTallies.put(r, new ConcurrentHashMap<>());
+            this.regionalRealTallies.put(r, new ConcurrentHashMap<>());
+            this.regionalSimulatedTallies.put(r, new ConcurrentHashMap<>());
         }
     }
 
@@ -41,34 +58,42 @@ public class RegionalVoteCounterAggregate {
      */
     public boolean recordVote(VoteRecord vote) {
         Objects.requireNonNull(vote, "vote cannot be null");
-        VoterId voterId = vote.voterId();
-        Region newRegion = vote.region();
-        CandidateId newCandidate = vote.candidateId();
+        VoterElectionKey key = new VoterElectionKey(vote.voterId(), vote.electionType());
+        VoterRegionalSelection next = new VoterRegionalSelection(vote.region(), vote.candidateId(), vote.voteSource());
 
-        synchronized (voterId) {
-            VoterRegionalSelection prev = voterSelections.put(voterId, new VoterRegionalSelection(newRegion, newCandidate));
+        synchronized (key.voterId().value().intern()) {
+            VoterRegionalSelection prev = voterSelections.put(key, next);
 
             if (prev == null) {
-                // New vote
-                regionalTallies.get(newRegion)
-                    .computeIfAbsent(newCandidate.value(), k -> new LongAdder())
-                    .increment();
+                increment(next.region(), next.candidateId().value(), next.source());
                 return true;
-            } else if (!prev.region().equals(newRegion) || !prev.candidateId().equals(newCandidate)) {
-                // Deduplicate: decrement previous region & candidate
-                LongAdder prevAdder = regionalTallies.get(prev.region()).get(prev.candidateId().value());
-                if (prevAdder != null) {
-                    prevAdder.decrement();
-                }
-                regionalTallies.get(newRegion)
-                    .computeIfAbsent(newCandidate.value(), k -> new LongAdder())
-                    .increment();
+            } else if (!prev.equals(next)) {
+                decrement(prev.region(), prev.candidateId().value(), prev.source());
+                increment(next.region(), next.candidateId().value(), next.source());
                 return true;
             } else {
-                // Idempotent
                 return false;
             }
         }
+    }
+
+    private void increment(Region region, String candidateId, VoteSource source) {
+        regionalTallies.get(region).computeIfAbsent(candidateId, k -> new LongAdder()).increment();
+        if (source == VoteSource.REAL) {
+            regionalRealTallies.get(region).computeIfAbsent(candidateId, k -> new LongAdder()).increment();
+        } else {
+            regionalSimulatedTallies.get(region).computeIfAbsent(candidateId, k -> new LongAdder()).increment();
+        }
+    }
+
+    private void decrement(Region region, String candidateId, VoteSource source) {
+        LongAdder prevAdder = regionalTallies.get(region).get(candidateId);
+        if (prevAdder != null) prevAdder.decrement();
+        Map<String, LongAdder> srcMap = source == VoteSource.REAL
+            ? regionalRealTallies.get(region)
+            : regionalSimulatedTallies.get(region);
+        LongAdder srcAdder = srcMap.get(candidateId);
+        if (srcAdder != null) srcAdder.decrement();
     }
 
     /**
@@ -78,17 +103,13 @@ public class RegionalVoteCounterAggregate {
         Objects.requireNonNull(region, "region cannot be null");
         Objects.requireNonNull(strategyContext, "strategyContext cannot be null");
 
-        ConcurrentHashMap<String, LongAdder> tallies = regionalTallies.get(region);
-        Map<String, Long> rawVotes = new HashMap<>();
-        long totalRegion = 0;
+        Map<String, Long> rawVotes = extractMap(regionalTallies.get(region));
+        Map<String, Long> realVotes = extractMap(regionalRealTallies.get(region));
+        Map<String, Long> simulatedVotes = extractMap(regionalSimulatedTallies.get(region));
 
-        if (tallies != null) {
-            for (Map.Entry<String, LongAdder> entry : tallies.entrySet()) {
-                long count = Math.max(0, entry.getValue().sum());
-                rawVotes.put(entry.getKey(), count);
-                totalRegion += count;
-            }
-        }
+        long totalRegion = rawVotes.values().stream().mapToLong(Long::longValue).sum();
+        long totalReal = realVotes.values().stream().mapToLong(Long::longValue).sum();
+        long totalSim = simulatedVotes.values().stream().mapToLong(Long::longValue).sum();
 
         Map<String, Double> weightedVotes = strategyContext.executeWeighting(region, rawVotes);
 
@@ -96,9 +117,24 @@ public class RegionalVoteCounterAggregate {
             region,
             weightedVotes,
             Collections.unmodifiableMap(rawVotes),
+            Collections.unmodifiableMap(realVotes),
+            Collections.unmodifiableMap(simulatedVotes),
             totalRegion,
+            totalReal,
+            totalSim,
+            WEIGHT_FACTORS.getOrDefault(region, 1.0),
             Instant.now()
         );
+    }
+
+    private Map<String, Long> extractMap(ConcurrentHashMap<String, LongAdder> tallies) {
+        Map<String, Long> out = new HashMap<>();
+        if (tallies != null) {
+            for (Map.Entry<String, LongAdder> entry : tallies.entrySet()) {
+                out.put(entry.getKey(), Math.max(0L, entry.getValue().sum()));
+            }
+        }
+        return out;
     }
 
     public long getRawVotes(Region region, String candidateId) {
@@ -106,5 +142,14 @@ public class RegionalVoteCounterAggregate {
         if (tallies == null) return 0;
         LongAdder adder = tallies.get(candidateId);
         return adder != null ? Math.max(0, adder.sum()) : 0;
+    }
+
+    public void clear() {
+        voterSelections.clear();
+        for (Region r : Region.values()) {
+            regionalTallies.get(r).clear();
+            regionalRealTallies.get(r).clear();
+            regionalSimulatedTallies.get(r).clear();
+        }
     }
 }

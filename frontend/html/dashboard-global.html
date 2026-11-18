@@ -3,298 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Global - Plataforma de Votación en Vivo</title>
-    <style>
-        :root {
-            --bg-color: #0d1117;
-            --card-bg: rgba(22, 27, 34, 0.85);
-            --border-color: #30363d;
-            --accent-cyan: #58a6ff;
-            --accent-green: #3fb950;
-            --accent-orange: #d29922;
-            --text-primary: #f0f6fc;
-            --text-secondary: #8b949e;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            min-height: 100vh;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, #58a6ff, #bc8cff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            background: rgba(63, 185, 80, 0.15);
-            color: var(--accent-green);
-            border: 1px solid var(--accent-green);
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: var(--accent-green);
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(1.2); }
-        }
-
-        .total-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.8rem;
-            text-align: center;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        }
-
-        .total-title {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .total-count {
-            font-size: 3.5rem;
-            font-weight: 800;
-            color: var(--text-primary);
-        }
-
-        .results-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.8rem;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        }
-
-        .candidate-item {
-            margin-bottom: 1.5rem;
-        }
-
-        .candidate-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .candidate-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-
-        .candidate-votes {
-            color: var(--accent-cyan);
-        }
-
-        .progress-bar-bg {
-            width: 100%;
-            height: 24px;
-            background-color: rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #1f6feb, #58a6ff);
-            border-radius: 12px;
-            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 10px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #fff;
-        }
-
-        .timestamp {
-            margin-top: 1.5rem;
-            text-align: right;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-    </style>
-    <style>
-        :root { --bg-color: #f7f9fc; --card-bg: #fff; --border-color: #e2e8f0; --accent-cyan: #315a85; --accent-green: #27845b; --text-primary: #243247; --text-secondary: #64748b; }
-        * { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        body { background: radial-gradient(circle at top right, #eaf2fa 0, transparent 35%), var(--bg-color); color: var(--text-primary); padding: clamp(1rem, 4vw, 3rem); }
-        .container { max-width: 960px; }
-        header { margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); gap: 1rem; }
-        h1 { color: var(--accent-cyan); background: none; -webkit-text-fill-color: initial; font-size: clamp(1.5rem, 3vw, 2.15rem); letter-spacing: -.03em; }
-        .status-badge { background: #ddf3e7; color: var(--accent-green); border: 1px solid #a9ddc1; font-weight: 700; white-space: nowrap; }
-        .status-dot { background-color: var(--accent-green); }
-        .total-card, .results-card { background: rgba(255,255,255,.96); border: 1px solid var(--border-color); border-radius: 18px; box-shadow: 0 12px 30px rgba(36,50,71,.08); }
-        .total-card { padding: 2rem; margin-bottom: 1.25rem; }
-        .total-title { color: var(--text-secondary); font-size: .85rem; letter-spacing: .08em; font-weight: 800; }
-        .total-count { color: var(--accent-cyan); font-size: clamp(3rem, 8vw, 4.5rem); }
-        .results-card { padding: clamp(1.25rem, 3vw, 2rem); }
-        .results-card h2 { color: var(--text-primary); }
-        .candidate-item { margin-bottom: 1.25rem; }
-        .candidate-header { font-size: 1rem; color: var(--text-primary); }
-        .candidate-votes { color: var(--accent-cyan); font-weight: 800; }
-        .progress-bar-bg { height: 20px; background: #eaf2fa; border: 1px solid var(--border-color); border-radius: 10px; }
-        .progress-bar-fill { background: linear-gradient(90deg, #315a85, #6d9bc4); border-radius: 10px; }
-        .timestamp { color: var(--text-secondary); margin-top: 1.25rem; }
-        @media (max-width: 640px) { header { align-items: flex-start; flex-direction: column; } .status-badge { align-self: flex-start; } }
-    </style>
+    <title>Resultados Nacionales en Vivo — Plataforma Electoral</title>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div>
-                <h1>Reality Show - Conteo Global en Vivo</h1>
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">
-                    Kafka Stateful Aggregation + RabbitMQ Fanout Exchange
-                </p>
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="/">
+                <div class="brand-seal">N</div>
+                <div>
+                    <div class="brand-title">Tablero Nacional en Tiempo Real</div>
+                    <div class="brand-sub">Kafka Stateful Aggregation + RabbitMQ Fanout Exchange (1s)</div>
+                </div>
+            </a>
+            <div class="nav-links">
+                <a class="nav-link" href="/">Cabina de Votación</a>
+                <a class="nav-link" href="/admin.html">Panel de Administración</a>
+                <a class="nav-link active" href="/dashboard-global.html">Resultados Nacionales</a>
+                <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
+                <span class="node-pill"><span class="pulse-dot"></span><span id="statusText">En Vivo (1s)</span></span>
             </div>
-            <div id="statusBadge" class="status-badge">
-                <div class="status-dot"></div>
-                <span id="statusText">En Vivo (1s)</span>
-            </div>
-        </header>
-
-        <div class="total-card">
-            <div class="total-title">Total de Votos Consolidados (Deduplicados)</div>
-            <div id="totalVotes" class="total-count">0</div>
         </div>
+    </nav>
 
-        <div class="results-card">
-            <h2 style="font-size: 1.3rem; margin-bottom: 1.5rem;">Resultados por Candidato</h2>
-            <div id="candidatesList">
-                <p style="color: var(--text-secondary); text-align: center;">Esperando eventos de votación...</p>
+    <main class="container">
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Votos Nacionales</div>
+                <div class="kpi-value" id="totalNac">0</div>
+                <div class="kpi-meta">Consolidado Fanout Exchange</div>
             </div>
-            <div id="timestamp" class="timestamp">Última actualización: --</div>
+            <div class="kpi-card real">
+                <div class="kpi-label" style="color: #047857;">Votos Reales (Ciudadanos)</div>
+                <div class="kpi-value" style="color: #065f46;" id="totalReal">0</div>
+                <div class="kpi-meta">Verificados con cédula y ticket</div>
+            </div>
+            <div class="kpi-card sim">
+                <div class="kpi-label" style="color: #3730a3;">Votos Simulados (En Vivo)</div>
+                <div class="kpi-value" style="color: #312e81;" id="totalSim">0</div>
+                <div class="kpi-meta">Flujo continuo de estrés</div>
+            </div>
+        </section>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Resultados por Candidato — Elección Nacional 2026</div>
+                    <div class="card-subtitle">Verde: Votos Reales · Índigo: Votos Simulados</div>
+                </div>
+                <span class="badge badge-neutral" id="updatedAt">Esperando transmisión...</span>
+            </div>
+            <div id="candidatesBoard"></div>
         </div>
-    </div>
+    </main>
 
     <script>
-        function updateUI(data) {
-            if (!data) return;
+        let candidates = [];
+        async function boot() {
+            const catRes = await fetch('/api/catalog');
+            const cat = await catRes.json();
+            candidates = cat.nationalCandidates || [];
+            const res = await fetch('/api/results/global');
+            if (res.ok) render(await res.json());
 
-            document.getElementById('totalVotes').innerText = Number(data.totalVotes || 0).toLocaleString();
+            const es = new EventSource('/api/results/global/stream');
+            es.addEventListener('global-results', e => render(JSON.parse(e.data)));
+            es.onopen = () => document.getElementById('statusText').textContent = 'En Vivo (1s)';
+            es.onerror = () => document.getElementById('statusText').textContent = 'Reconectando...';
+        }
 
-            const candidatesList = document.getElementById('candidatesList');
-            const candidateVotes = data.candidateVotes || {};
-            const total = Number(data.totalVotes || 0);
+        function render(data) {
+            const nacTotal = Number(data.totalNationalVotes || 0);
+            const totals = data.nationalCandidateVotes || {};
+            const reals = data.nationalRealVotes || {};
+            const sims = data.nationalSimulatedVotes || {};
 
-            const sortedCandidates = Object.entries(candidateVotes).sort((a, b) => b[1] - a[1]);
+            const realSum = Object.values(reals).reduce((a, b) => a + Number(b), 0);
+            const simSum = Object.values(sims).reduce((a, b) => a + Number(b), 0);
 
-            if (sortedCandidates.length === 0) {
-                candidatesList.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Esperando eventos de votación...</p>';
-            } else {
-                let html = '';
-                sortedCandidates.forEach(([candidate, count]) => {
-                    const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
-                    html += `
-                        <div class="candidate-item">
-                            <div class="candidate-header">
-                                <span>${candidate}</span>
-                                <span class="candidate-votes">${Number(count).toLocaleString()} votos (${pct}%)</span>
+            document.getElementById('totalNac').textContent = nacTotal.toLocaleString('es-CO');
+            document.getElementById('totalReal').textContent = realSum.toLocaleString('es-CO');
+            document.getElementById('totalSim').textContent = simSum.toLocaleString('es-CO');
+            document.getElementById('updatedAt').textContent = 'Actualizado: ' + new Date(data.generatedAt || Date.now()).toLocaleTimeString('es-CO');
+
+            const sorted = [...candidates].sort((a, b) => (totals[b.id] || 0) - (totals[a.id] || 0));
+            document.getElementById('candidatesBoard').innerHTML = sorted.map(c => {
+                const t = Number(totals[c.id] || 0);
+                const r = Number(reals[c.id] || 0);
+                const s = Number(sims[c.id] || 0);
+                const pct = nacTotal > 0 ? ((t / nacTotal) * 100).toFixed(1) : '0.0';
+                const rPct = nacTotal > 0 ? (r / nacTotal) * 100 : 0;
+                const sPct = nacTotal > 0 ? (s / nacTotal) * 100 : 0;
+                return `
+                    <div style="margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                            <div>
+                                <strong style="font-size: 1.05rem;">#${c.ballotNumber} ${c.name}</strong>
+                                <span style="font-size: 0.82rem; color: var(--ink-soft); margin-left: 0.5rem;">${c.party}</span>
                             </div>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill" style="width: ${Math.max(3, pct)}%">${pct}%</div>
+                            <div style="font-size: 0.9rem;">
+                                <span class="badge badge-real">${r.toLocaleString('es-CO')} Reales</span>
+                                <span class="badge badge-sim">${s.toLocaleString('es-CO')} Simulados</span>
+                                <strong style="margin-left: 0.4rem;">${t.toLocaleString('es-CO')} (${pct}%)</strong>
                             </div>
                         </div>
-                    `;
-                });
-                candidatesList.innerHTML = html;
-            }
-
-            const timeStr = data.generatedAt ? new Date(data.generatedAt).toLocaleTimeString() : new Date().toLocaleTimeString();
-            document.getElementById('timestamp').innerText = 'Última actualización: ' + timeStr;
+                        <div class="stacked-bar" style="height: 20px;">
+                            <div class="bar-real" style="width: ${rPct}%"></div>
+                            <div class="bar-sim" style="width: ${sPct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
-
-        // Connect SSE stream
-        function connectSSE() {
-            const eventSource = new EventSource('/api/results/global/stream');
-
-            eventSource.addEventListener('global-results', function(event) {
-                try {
-                    const data = JSON.parse(event.data);
-                    updateUI(data);
-                } catch (e) {
-                    console.error("Error parsing SSE data", e);
-                }
-            });
-
-            eventSource.onerror = function() {
-                document.getElementById('statusText').innerText = 'Reconectando...';
-                document.getElementById('statusBadge').style.borderColor = '#d29922';
-                document.getElementById('statusBadge').style.color = '#d29922';
-            };
-
-            eventSource.onopen = function() {
-                document.getElementById('statusText').innerText = 'En Vivo (1s)';
-                document.getElementById('statusBadge').style.borderColor = 'var(--accent-green)';
-                document.getElementById('statusBadge').style.color = 'var(--accent-green)';
-            };
-        }
-
-        // Initial fetch + fallback polling
-        async function fetchInitial() {
-            try {
-                const res = await fetch('/api/results/global');
-                if (res.ok) {
-                    const data = await res.json();
-                    updateUI(data);
-                }
-            } catch (err) {
-                console.error("Initial fetch failed", err);
-            }
-        }
-
-        fetchInitial();
-        connectSSE();
-        setInterval(fetchInitial, 2000);
+        boot();
     </script>
-    <script type="module" src="./firebase-auth.js"></script>
 </body>
 </html>
