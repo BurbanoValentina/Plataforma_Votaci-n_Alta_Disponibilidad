@@ -1,6 +1,7 @@
 package com.voting.platform.stream.service;
 
 import com.voting.platform.domain.aggregate.RegionalVoteCounterAggregate;
+import com.voting.platform.domain.model.ElectionType;
 import com.voting.platform.domain.model.Region;
 import com.voting.platform.domain.model.RegionalResultRecord;
 import com.voting.platform.domain.model.VoteRecord;
@@ -46,6 +47,9 @@ public class RegionalRollupService {
     }
 
     public boolean processRegionalVote(VoteRecord vote) {
+        if (vote == null || vote.electionType() != ElectionType.REGIONAL) {
+            return false;
+        }
         return regionalAggregate.recordVote(vote);
     }
 

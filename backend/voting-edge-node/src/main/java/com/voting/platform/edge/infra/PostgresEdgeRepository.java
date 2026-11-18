@@ -74,6 +74,7 @@ public class PostgresEdgeRepository implements VoteTicketRepositoryPort, Electio
             jdbcTemplate.execute("ALTER TABLE election_control ADD COLUMN IF NOT EXISTS telegram_chat_id VARCHAR(128) NOT NULL DEFAULT ''");
             jdbcTemplate.execute("ALTER TABLE election_control ADD COLUMN IF NOT EXISTS telegram_notify_votes BOOLEAN NOT NULL DEFAULT TRUE");
             jdbcTemplate.execute("ALTER TABLE election_control ADD COLUMN IF NOT EXISTS telegram_notify_fraud BOOLEAN NOT NULL DEFAULT TRUE");
+            jdbcTemplate.execute("ALTER TABLE election_control ADD COLUMN IF NOT EXISTS telegram_last_update_id BIGINT NOT NULL DEFAULT 0");
             jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS blocked_entities (
                     entity_key VARCHAR(128) PRIMARY KEY,
@@ -83,7 +84,17 @@ public class PostgresEdgeRepository implements VoteTicketRepositoryPort, Electio
                     blocked_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """);
-            log.info("[{}] Verified extended PostgreSQL schema (Telegram + Fraud blocked_entities)", nodeId);
+            jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS telegram_activity_log (
+                    id BIGSERIAL PRIMARY KEY,
+                    actor VARCHAR(128) NOT NULL,
+                    action_type VARCHAR(64) NOT NULL,
+                    message VARCHAR(512) NOT NULL,
+                    handled_by_node VARCHAR(64) NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+            log.info("[{}] Verified extended PostgreSQL schema (Telegram + Activity Log + Fraud blocked_entities)", nodeId);
         } catch (Exception e) {
             log.warn("[{}] Extended schema check deferred: {}", nodeId, e.getMessage());
         }
@@ -231,18 +242,27 @@ public class PostgresEdgeRepository implements VoteTicketRepositoryPort, Electio
     public Map<String, RegionalResultRecord> computeAuthoritativeRegionalResults() {
         Map<String, RegionalResultRecord> out = new LinkedHashMap<>();
         try {
+            // ONLY Regional election votes (Eleccion Regional 2026) so National candidates never mix into Regional!
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 """
-                SELECT region, candidate_id, vote_source, COUNT(DISTINCT voter_id || ':' || election_type) AS cnt
+                SELECT region, candidate_id, vote_source, COUNT(DISTINCT voter_id) AS cnt
                 FROM audit_votes
+                WHERE election_type = 'REGIONAL'
                 GROUP BY region, candidate_id, vote_source
                 """
             );
-            Map<Region, Map<String, Long>> rawByReg = new HashMap<>();
+            List<Map<String, Object>> realTickets = jdbcTemplate.queryForList(
+                """
+                SELECT region, candidate_id, COUNT(DISTINCT voter_id) AS cnt
+                FROM vote_tickets
+                WHERE election_type = 'REGIONAL' AND vote_source = 'REAL'
+                GROUP BY region, candidate_id
+                """
+            );
+
             Map<Region, Map<String, Long>> realByReg = new HashMap<>();
             Map<Region, Map<String, Long>> simByReg = new HashMap<>();
             for (Region r : Region.values()) {
-                rawByReg.put(r, new HashMap<>());
                 realByReg.put(r, new HashMap<>());
                 simByReg.put(r, new HashMap<>());
             }
@@ -251,17 +271,25 @@ public class PostgresEdgeRepository implements VoteTicketRepositoryPort, Electio
                 String cand = String.valueOf(row.get("candidate_id"));
                 String src = String.valueOf(row.get("vote_source"));
                 long cnt = ((Number) row.get("cnt")).longValue();
-                rawByReg.get(reg).merge(cand, cnt, Long::sum);
                 if ("REAL".equalsIgnoreCase(src)) {
-                    realByReg.get(reg).merge(cand, cnt, Long::sum);
+                    realByReg.get(reg).merge(cand, cnt, Long::max);
                 } else {
                     simByReg.get(reg).merge(cand, cnt, Long::sum);
                 }
             }
+            for (Map<String, Object> row : realTickets) {
+                Region reg = Region.fromString(String.valueOf(row.get("region")));
+                String cand = String.valueOf(row.get("candidate_id"));
+                long cnt = ((Number) row.get("cnt")).longValue();
+                realByReg.get(reg).merge(cand, cnt, Long::max);
+            }
             for (Region reg : Region.values()) {
-                Map<String, Long> raw = rawByReg.get(reg);
                 Map<String, Long> reals = realByReg.get(reg);
                 Map<String, Long> sims = simByReg.get(reg);
+                Map<String, Long> raw = new HashMap<>();
+                for (String cand : unionKeys(reals, sims)) {
+                    raw.put(cand, reals.getOrDefault(cand, 0L) + sims.getOrDefault(cand, 0L));
+                }
                 long tot = raw.values().stream().mapToLong(Long::longValue).sum();
                 long totR = reals.values().stream().mapToLong(Long::longValue).sum();
                 long totS = sims.values().stream().mapToLong(Long::longValue).sum();
@@ -277,6 +305,101 @@ public class PostgresEdgeRepository implements VoteTicketRepositoryPort, Electio
             log.debug("[{}] Authoritative regional query failed: {}", nodeId, e.getMessage());
         }
         return out;
+    }
+
+    /**
+     * Per-city live map telemetry (REAL vs SIMULATED counts) for the interactive Colombia Map.
+     */
+    public List<Map<String, Object>> queryCityMapActivity(String electionFilter) {
+        try {
+            String filterClause = (electionFilter != null && !electionFilter.isBlank() && !"ALL".equalsIgnoreCase(electionFilter))
+                ? " WHERE election_type = '" + electionFilter.trim().toUpperCase().replace("'", "") + "'"
+                : "";
+            return jdbcTemplate.queryForList(
+                """
+                SELECT city,
+                       MAX(region) AS region,
+                       COUNT(*) AS total_votes,
+                       SUM(CASE WHEN vote_source = 'REAL' THEN 1 ELSE 0 END) AS real_votes,
+                       SUM(CASE WHEN vote_source = 'SIMULATED' THEN 1 ELSE 0 END) AS simulated_votes,
+                       MAX(CASE WHEN vote_source = 'REAL' THEN voted_at ELSE NULL END) AS last_real_at,
+                       MAX(voted_at) AS last_voted_at
+                FROM audit_votes
+                """ + filterClause + """
+                 GROUP BY city
+                ORDER BY total_votes DESC
+                """
+            );
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    @Transactional
+    public void recordTelegramActivity(String actor, String actionType, String message) {
+        try {
+            jdbcTemplate.update(
+                """
+                INSERT INTO telegram_activity_log (actor, action_type, message, handled_by_node, created_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                actor != null ? actor : "Telegram",
+                actionType != null ? actionType : "COMMAND",
+                message != null ? message : "",
+                nodeId
+            );
+        } catch (Exception e) {
+            log.debug("[{}] Failed logging Telegram activity: {}", nodeId, e.getMessage());
+        }
+    }
+
+    public List<Map<String, Object>> queryTelegramActivity(int limit) {
+        try {
+            return jdbcTemplate.queryForList(
+                """
+                SELECT id, actor, action_type, message, handled_by_node, created_at
+                FROM telegram_activity_log
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                Math.max(1, Math.min(limit, 50))
+            );
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    public long getTelegramLastUpdateId() {
+        try {
+            Long val = jdbcTemplate.queryForObject("SELECT telegram_last_update_id FROM election_control WHERE id = 1", Long.class);
+            return val != null ? val : 0L;
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    @Transactional
+    public void updateTelegramLastUpdateId(long updateId) {
+        jdbcTemplate.update(
+            "UPDATE election_control SET telegram_last_update_id = GREATEST(telegram_last_update_id, ?) WHERE id = 1",
+            updateId
+        );
+    }
+
+    public boolean tryClaimTelegramPollSlot() {
+        try {
+            Boolean locked = jdbcTemplate.queryForObject("SELECT pg_try_advisory_lock(884422)", Boolean.class);
+            return Boolean.TRUE.equals(locked);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public void releaseTelegramPollSlot() {
+        try {
+            jdbcTemplate.queryForObject("SELECT pg_advisory_unlock(884422)", Boolean.class);
+        } catch (Exception ignored) {
+        }
     }
 
     private static java.util.Set<String> unionKeys(Map<String, Long> a, Map<String, Long> b) {

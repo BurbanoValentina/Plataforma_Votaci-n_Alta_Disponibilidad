@@ -3,48 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados Regionales Ponderados — Plataforma Electoral</title>
+    <title>Resultados Regionales y Mapa en Vivo — Plataforma Electoral</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
     <nav class="topbar">
         <div class="topbar-inner">
-            <a class="brand" href="/">
-                <div class="brand-seal">R</div>
+            <!-- Logo personalizado: acceso oculto al Panel de Administración -->
+            <a class="brand" href="/admin.html" title="Consejo Electoral Digital">
+                <div class="brand-logo-wrap">
+                    <img src="/assets/logo.png" alt="Logo Electoral">
+                </div>
                 <div>
-                    <div class="brand-title">Tablero Regional Ponderado</div>
-                    <div class="brand-sub">RabbitMQ Topic Exchange (results.*) + GoF Patrón Strategy</div>
+                    <div class="brand-title">Resultados Regionales y Mapa en Vivo</div>
+                    <div class="brand-sub">Elección Regional 2026 · RabbitMQ Topic (results.*) + GoF Patrón Strategy</div>
                 </div>
             </a>
             <div class="nav-links">
-                <a class="nav-link" href="/">Cabina de Votación</a>
-                <a class="nav-link" href="/admin.html">Panel de Administración</a>
-                <a class="nav-link" href="/prediccion.html">Segunda Vuelta</a>
-                <a class="nav-link" href="/dashboard-global.html">Resultados Nacionales</a>
-                <a class="nav-link active" href="/dashboard-regional.html">Resultados Regionales</a>
+                <a class="nav-link" href="/"><span class="ms ms-sm">how_to_vote</span>Cabina de Votación</a>
+                <a class="nav-link" href="/prediccion.html"><span class="ms ms-sm">leaderboard</span>Segunda Vuelta</a>
+                <a class="nav-link" href="/dashboard-global.html"><span class="ms ms-sm">public</span>Resultados Nacionales</a>
+                <a class="nav-link active" href="/dashboard-regional.html"><span class="ms ms-sm">map</span>Resultados Regionales</a>
                 <span class="node-pill"><span class="pulse-dot"></span><span id="statusText">En Vivo (5s)</span></span>
             </div>
         </div>
     </nav>
 
     <main class="container">
-        <div class="card" style="background: #eff6ff; border-color: #bfdbfe;">
-            <strong>Patrón GoF Strategy (ElectoralWeightingStrategy):</strong>
-            CENTRO (x1.40) · NORTE (x1.25) · SUR (x1.15) · OESTE (x1.05) · ESTE (x0.90) — Enrutamiento reactivo por <code>results.&lt;region&gt;</code>.
+        <!-- Interactive Live Colombia Map -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><span class="ms">location_on</span>Mapa Electoral Interactivo de Colombia en Tiempo Real</div>
+                    <div class="card-subtitle">Haz clic en cualquier ciudad o filtra por región. Las zonas donde llegan votos REALES ciudadanos cambian a color naranja pulsante.</div>
+                </div>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="btn btn-sm btn-primary" id="regBtnALL" onclick="filterRegion('ALL')">Todas</button>
+                    <button class="btn btn-sm btn-outline" id="regBtnCENTRO" onclick="filterRegion('CENTRO')">CENTRO (x1.40)</button>
+                    <button class="btn btn-sm btn-outline" id="regBtnNORTE" onclick="filterRegion('NORTE')">NORTE (x1.25)</button>
+                    <button class="btn btn-sm btn-outline" id="regBtnSUR" onclick="filterRegion('SUR')">SUR (x1.15)</button>
+                    <button class="btn btn-sm btn-outline" id="regBtnOESTE" onclick="filterRegion('OESTE')">OESTE (x1.05)</button>
+                    <button class="btn btn-sm btn-outline" id="regBtnESTE" onclick="filterRegion('ESTE')">ESTE (x0.90)</button>
+                </div>
+            </div>
+
+            <div class="map-legend">
+                <span><span class="legend-dot" style="background: #f97316; box-shadow: 0 0 8px #f97316;"></span><strong>Naranja pulsante:</strong> Ciudad con votos REALES ciudadanos</span>
+                <span><span class="legend-dot" style="background: #20B2A6;"></span><strong>Turquesa (#20B2A6):</strong> Ciudad con tráfico simulado en vivo</span>
+                <span style="color: var(--ink-soft);">Ponderación Strategy aplicada exclusivamente a candidatos de la <strong>Elección Regional 2026</strong>.</span>
+            </div>
+
+            <div id="regionalMap" class="map-container"></div>
         </div>
 
         <div class="grid-equal" id="regionsGrid"></div>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/colombia-map.js"></script>
     <script>
-        let candidateNames = {};
+        let candidateInfo = {};
+        let activeRegionFilter = 'ALL';
         const regionsState = { CENTRO: null, NORTE: null, SUR: null, OESTE: null, ESTE: null };
+        const liveMap = new ColombiaElectoralMap('regionalMap', 'ALL');
+
+        function filterRegion(reg) {
+            activeRegionFilter = reg;
+            ['ALL', 'CENTRO', 'NORTE', 'SUR', 'OESTE', 'ESTE'].forEach(r => {
+                const btn = document.getElementById('regBtn' + r);
+                if (btn) btn.className = 'btn btn-sm ' + (r === reg ? 'btn-primary' : 'btn-outline');
+            });
+            liveMap.setRegionFilter(reg);
+            render();
+        }
 
         async function boot() {
+            liveMap.init();
             const cat = await (await fetch('/api/catalog')).json();
-            [...(cat.nationalCandidates || []), ...(cat.regionalCandidates || [])].forEach(c => {
-                candidateNames[c.id] = c.name;
-            });
+            (cat.regionalCandidates || []).forEach(c => { candidateInfo[c.id] = c; });
 
             const init = await (await fetch('/api/results/regional')).json();
             Object.assign(regionsState, init);
@@ -62,7 +99,9 @@
 
         function render() {
             const grid = document.getElementById('regionsGrid');
-            grid.innerHTML = Object.entries(regionsState).map(([reg, data]) => {
+            const entries = Object.entries(regionsState).filter(([reg]) => activeRegionFilter === 'ALL' || reg === activeRegionFilter);
+
+            grid.innerHTML = entries.map(([reg, data]) => {
                 const total = Number(data?.totalRegionalVotes || 0);
                 const realTot = Number(data?.totalRealVotes || 0);
                 const simTot = Number(data?.totalSimulatedVotes || 0);
@@ -72,27 +111,35 @@
                 const sims = data?.simulatedVotes || {};
                 const weighted = data?.weightedVotes || {};
 
-                const keys = Object.keys(raw).sort((a, b) => (weighted[b] || 0) - (weighted[a] || 0));
+                // Only show Regional candidates
+                const keys = Object.keys(raw)
+                    .filter(id => candidateInfo[id])
+                    .sort((a, b) => (weighted[b] || 0) - (weighted[a] || 0));
+
                 const body = keys.length === 0
-                    ? '<div style="color: var(--ink-soft); font-size: 0.85rem;">Esperando votos de esta región...</div>'
+                    ? '<div style="color: var(--ink-soft); font-size: 0.84rem;">Esperando votos regionales en esta zona...</div>'
                     : keys.map(id => {
+                        const c = candidateInfo[id];
                         const r = Number(reals[id] || 0);
                         const s = Number(sims[id] || 0);
-                        const t = Number(raw[id] || 0);
                         const w = Number(weighted[id] || 0);
                         const rPct = total > 0 ? (r / total) * 100 : 0;
                         const sPct = total > 0 ? (s / total) * 100 : 0;
                         return `
                             <div style="margin-bottom: 0.85rem;">
-                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
-                                    <strong>${candidateNames[id] || id}</strong>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 0.25rem; gap: 0.4rem;">
+                                    <span style="display: inline-flex; align-items: center; gap: 0.45rem;">
+                                        <img class="candidate-avatar-sm" style="width: 28px; height: 28px;" src="${c.photoUrl || ''}" alt="${c.name}"
+                                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=20B2A6&color=fff'">
+                                        <strong>${c.name}</strong>
+                                    </span>
                                     <span>
-                                        <span style="color: #047857; font-weight: 700;">${r}R</span> /
-                                        <span style="color: #4f46e5;">${s}S</span> ·
+                                        <span style="color: #c2410c; font-weight: 700;">${r}R</span> /
+                                        <span style="color: var(--brand-dark);">${s}S</span> ·
                                         <strong style="color: #6b21a8;">${w.toFixed(1)} pts</strong>
                                     </span>
                                 </div>
-                                <div class="stacked-bar" style="height: 12px;">
+                                <div class="stacked-bar" style="height: 11px;">
                                     <div class="bar-real" style="width: ${rPct}%"></div>
                                     <div class="bar-sim" style="width: ${sPct}%"></div>
                                 </div>
@@ -104,10 +151,10 @@
                     <div class="card">
                         <div class="card-header">
                             <div>
-                                <div class="card-title">Región ${reg}</div>
-                                <div class="card-subtitle">${realTot} Reales · ${simTot} Simulados</div>
+                                <div class="card-title"><span class="ms">location_city</span>Región ${reg}</div>
+                                <div class="card-subtitle">${realTot} Reales · ${simTot} Simulados (Solo Elección Regional)</div>
                             </div>
-                            <span class="badge badge-reg">x${mult.toFixed(2)} · ${total} votos</span>
+                            <span class="badge badge-reg">Strategy x${mult.toFixed(2)} · ${total} votos</span>
                         </div>
                         ${body}
                     </div>

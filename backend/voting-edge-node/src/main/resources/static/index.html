@@ -3,28 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plataforma Oficial de Votación — Nacional y Regional</title>
+    <title>Cabina Oficial de Votación — Nacional y Regional</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
     <nav class="topbar">
         <div class="topbar-inner">
-            <a class="brand" href="/">
-                <div class="brand-seal">V</div>
+            <!-- Logo personalizado: acceso oculto al Panel de Administración -->
+            <a class="brand" href="/admin.html" title="Consejo Electoral Digital">
+                <div class="brand-logo-wrap">
+                    <img src="/assets/logo.png" alt="Logo Electoral">
+                </div>
                 <div>
                     <div class="brand-title">Consejo Electoral Digital</div>
-                    <div class="brand-sub">Plataforma Distribuida de Alta Disponibilidad</div>
+                    <div class="brand-sub">Plataforma Ciudadana de Votación en Vivo</div>
                 </div>
             </a>
             <div class="nav-links">
-                <a class="nav-link active" href="/">Cabina de Votación</a>
-                <a class="nav-link" href="/admin.html">Panel de Administración</a>
-                <a class="nav-link" href="/prediccion.html">Segunda Vuelta</a>
-                <a class="nav-link" href="/dashboard-global.html">Resultados Nacionales</a>
-                <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
+                <a class="nav-link active" href="/"><span class="ms ms-sm">how_to_vote</span>Cabina de Votación</a>
+                <a class="nav-link" href="/prediccion.html"><span class="ms ms-sm">leaderboard</span>Segunda Vuelta</a>
+                <a class="nav-link" href="/dashboard-global.html"><span class="ms ms-sm">public</span>Resultados Nacionales</a>
+                <a class="nav-link" href="/dashboard-regional.html"><span class="ms ms-sm">map</span>Resultados Regionales</a>
                 <span class="node-pill" id="nodePill">
                     <span class="pulse-dot"></span>
-                    <span id="activeNodeLabel">Conectando nodo AWS...</span>
+                    <span id="activeNodeLabel">Conectando AWS...</span>
                 </span>
             </div>
         </div>
@@ -42,7 +44,7 @@
             </div>
             <div class="hero-stats">
                 <div class="hero-stat">
-                    <div class="hero-stat-label">Estado Electoral</div>
+                    <div class="hero-stat-label">Estado Urnas</div>
                     <div class="hero-stat-val" id="heroLifecycle">HABILITADO</div>
                 </div>
                 <div class="hero-stat">
@@ -50,7 +52,7 @@
                     <div class="hero-stat-val" id="heroRealVotes">0</div>
                 </div>
                 <div class="hero-stat">
-                    <div class="hero-stat-label">Tráfico en Vivo</div>
+                    <div class="hero-stat-label">Escrutinio Total</div>
                     <div class="hero-stat-val" id="heroTotalVotes">0</div>
                 </div>
             </div>
@@ -62,7 +64,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div>
-                            <div class="card-title">1. Seleccione el Tipo de Elección</div>
+                            <div class="card-title"><span class="ms">ballot</span>1. Seleccione el Tipo de Elección</div>
                             <div class="card-subtitle">Puede participar una vez en Elección Nacional y una vez en Elección Regional</div>
                         </div>
                         <span class="badge badge-ok" id="stateBadge">HABILITADO</span>
@@ -71,17 +73,17 @@
                     <div class="election-tabs">
                         <button type="button" class="election-tab active" id="tabNacional" onclick="selectElection('NACIONAL')">
                             <div class="election-tab-title">
-                                <span>Elección Nacional 2026</span>
-                                <span class="badge badge-nac">Fanout 1s</span>
+                                <span><span class="ms ms-sm" style="color: var(--brand-dark);">public</span> Elección Nacional 2026</span>
+                                <span class="badge badge-brand">Presidencial</span>
                             </div>
-                            <div class="election-tab-desc">Presidencia / Consulta Nacional — Conteo consolidado en vivo</div>
+                            <div class="election-tab-desc">Tarjetón Nacional — Conteo consolidado en vivo en todo el país</div>
                         </button>
                         <button type="button" class="election-tab" id="tabRegional" onclick="selectElection('REGIONAL')">
                             <div class="election-tab-title">
-                                <span>Elección Regional 2026</span>
-                                <span class="badge badge-reg">Topic 5s</span>
+                                <span><span class="ms ms-sm" style="color: #7c3aed;">map</span> Elección Regional 2026</span>
+                                <span class="badge badge-reg">Territorial</span>
                             </div>
-                            <div class="election-tab-desc">Gobernaciones por Región — Ponderación electoral (Strategy)</div>
+                            <div class="election-tab-desc">Tarjetón Regional — Ponderación electoral por zona geográfica</div>
                         </button>
                     </div>
 
@@ -90,12 +92,12 @@
                             <div class="form-group">
                                 <label for="cedulaInput">Número de Cédula *</label>
                                 <input type="text" id="cedulaInput" placeholder="Ej: 1085321456" minlength="3" maxlength="64" required>
-                                <div class="helper-text">Verificada en tiempo real contra Kafka KTable y padrón único.</div>
+                                <div class="helper-text">Validada en tiempo real. Si ya votó, se mostrará su ticket oficial.</div>
                             </div>
                             <div class="form-group">
-                                <label for="voterNameInput">Nombre Completo (para su comprobante)</label>
-                                <input type="text" id="voterNameInput" placeholder="Ej: Valentina Burbano" maxlength="100">
-                                <div class="helper-text">Opcional. Aparecerá impreso en su ticket electoral.</div>
+                                <label for="voterNameInput">Nombre Completo *</label>
+                                <input type="text" id="voterNameInput" placeholder="Ej: Valentina Burbano" maxlength="100" required>
+                                <div class="helper-text">Protección anti-suplantación activa: nombre vinculado a su cédula.</div>
                             </div>
                         </div>
 
@@ -105,19 +107,19 @@
                                 <select id="citySelect" required onchange="onCityChanged()"></select>
                             </div>
                             <div class="form-group">
-                                <label for="regionDisplay">Región Electoral Asignada</label>
-                                <input type="text" id="regionDisplay" readonly style="background: #f8fafc; font-weight: 700;">
-                                <div class="helper-text" id="regionWeightHint">Factor de ponderación Strategy aplicado automáticamente.</div>
+                                <label for="regionDisplay">Zona / Región Electoral</label>
+                                <input type="text" id="regionDisplay" readonly style="background: var(--surface-soft); font-weight: 700;">
+                                <div class="helper-text" id="regionWeightHint">Región geográfica asignada automáticamente según la ciudad.</div>
                             </div>
                         </div>
 
-                        <div style="margin-top: 0.5rem;">
+                        <div style="margin-top: 0.4rem;">
                             <label id="ballotTitle">2. Seleccione su Candidato — Elección Nacional 2026 *</label>
                             <div class="ballot-grid" id="ballotGrid"></div>
                         </div>
 
-                        <button type="submit" class="btn btn-success btn-block" id="submitVoteBtn">
-                            Verificar Cédula y Emitir Voto Oficial
+                        <button type="submit" class="btn btn-primary btn-block" id="submitVoteBtn" style="padding: 0.85rem; font-size: 0.96rem;">
+                            <span class="ms">verified_user</span> Verificar Cédula y Emitir Voto Oficial
                         </button>
                     </form>
 
@@ -126,53 +128,55 @@
                 </div>
             </div>
 
-            <!-- RIGHT: Ticket Verification + Live Snapshot -->
+            <!-- RIGHT: Ticket Lookup + Live Results Preview -->
             <div>
                 <div class="card">
                     <div class="card-header">
                         <div>
-                            <div class="card-title">Consultar mi Ticket Electoral</div>
-                            <div class="card-subtitle">Verifique si una cédula ya votó y recupere sus comprobantes</div>
+                            <div class="card-title"><span class="ms">confirmation_number</span>Consultar mi Ticket Electoral</div>
+                            <div class="card-subtitle">Verifique si su cédula ya votó y recupere sus comprobantes digitales</div>
                         </div>
                     </div>
                     <form onsubmit="lookupTickets(event)" style="display: flex; gap: 0.6rem;">
                         <input type="text" id="lookupCedulaInput" placeholder="Ingrese número de cédula..." required>
-                        <button type="submit" class="btn btn-primary">Consultar</button>
+                        <button type="submit" class="btn btn-dark"><span class="ms ms-sm">search</span>Consultar</button>
                     </form>
-                    <div id="lookupResults" style="margin-top: 1rem;"></div>
+                    <div id="lookupResults" style="margin-top: 0.9rem;"></div>
                 </div>
 
                 <div class="card">
                     <div class="card-header">
                         <div>
-                            <div class="card-title">Transmisión en Tiempo Real</div>
-                            <div class="card-subtitle">Diferenciación en vivo: Votos Reales vs Tráfico Simulado</div>
+                            <div class="card-title"><span class="ms">podcasts</span>Transmisión de Resultados en Vivo</div>
+                            <div class="card-subtitle">Conteo actualizado en tiempo real</div>
                         </div>
-                        <span class="badge badge-ok" id="sseBadge">SSE En Vivo</span>
+                        <span class="badge badge-ok" id="sseBadge">En Vivo</span>
                     </div>
 
-                    <div style="display: flex; gap: 0.85rem; margin-bottom: 1rem; font-size: 0.8rem;">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.78rem;">
                         <span><span class="badge badge-real">● REALES</span> Ciudadanos verificados</span>
-                        <span><span class="badge badge-sim">● SIMULADOS</span> Flujo continuo</span>
+                        <span><span class="badge badge-brand">● SIMULADOS</span> Flujo de prueba</span>
                     </div>
 
-                    <div id="livePreviewNational" style="margin-bottom: 1.15rem;">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #1e40af; margin-bottom: 0.5rem;">
-                            ELECCIÓN NACIONAL (Fanout 1s)
+                    <div style="margin-bottom: 1.1rem;">
+                        <div style="font-size: 0.78rem; font-weight: 800; color: var(--brand-darker); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem;">
+                            Elección Nacional 2026
                         </div>
                         <div id="previewNacBars"></div>
                     </div>
 
-                    <div id="livePreviewRegional">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #6b21a8; margin-bottom: 0.5rem;">
-                            ELECCIÓN REGIONAL (Topic 5s)
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 800; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem;">
+                            Elección Regional 2026
                         </div>
                         <div id="previewRegBars"></div>
                     </div>
 
-                    <div style="margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.78rem; color: var(--ink-soft);" id="previewUpdated">Actualizando...</span>
-                        <a href="/admin.html" class="btn btn-outline btn-sm">Ir al Panel Administrador →</a>
+                    <div style="margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <span style="font-size: 0.76rem; color: var(--ink-soft);" id="previewUpdated">Actualizando...</span>
+                        <a href="/prediccion.html" class="btn btn-outline btn-sm">
+                            <span class="ms ms-sm">leaderboard</span> Ver Predicción 2da Vuelta
+                        </a>
                     </div>
                 </div>
             </div>

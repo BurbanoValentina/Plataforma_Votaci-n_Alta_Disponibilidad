@@ -27,6 +27,7 @@ public record RunoffPredictionRecord(
         String name,
         String party,
         String accentColor,
+        String photoUrl,
         long votes,
         long realVotes,
         long simulatedVotes,

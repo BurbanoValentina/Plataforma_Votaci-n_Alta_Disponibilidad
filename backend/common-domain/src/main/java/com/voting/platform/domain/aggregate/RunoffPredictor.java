@@ -108,6 +108,7 @@ public final class RunoffPredictor {
                 st.profile().name(),
                 st.profile().party(),
                 st.profile().accentColor(),
+                st.profile().photoUrl(),
                 st.activeVotes(),
                 st.realVotes(),
                 st.simVotes(),

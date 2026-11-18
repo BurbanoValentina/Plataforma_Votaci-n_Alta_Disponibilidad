@@ -8,12 +8,12 @@ async function initPortal() {
         const res = await fetch('/api/catalog');
         catalog = await res.json();
 
-        document.getElementById('activeNodeLabel').textContent = `Nodo: ${catalog.nodeId} (${catalog.availabilityZone})`;
+        document.getElementById('activeNodeLabel').textContent = `Nodo: ${catalog.nodeId}`;
         updateLifecycleBadges(catalog.lifecycleState);
         populateCities(catalog.cities);
         renderBallot();
     } catch (e) {
-        document.getElementById('activeNodeLabel').textContent = 'Sin conexión al API';
+        document.getElementById('activeNodeLabel').textContent = 'Sin conexión';
     }
 
     fetchLiveGlobal();
@@ -49,7 +49,7 @@ function onCityChanged() {
     const mult = regionMultipliers[region] || 1.0;
     document.getElementById('regionDisplay').value = `Región ${region}`;
     document.getElementById('regionWeightHint').textContent =
-        `Ponderación regional GoF Strategy: x${mult.toFixed(2)} (Routing Key: results.${region.toLowerCase()})`;
+        `Factor regional aplicado en Elección Regional: x${mult.toFixed(2)} (Zona ${region}).`;
 }
 
 function selectElection(type) {
@@ -77,12 +77,19 @@ function renderBallot() {
             selectedCandidateId = c.id;
             renderBallot();
         };
+        const photo = c.photoUrl || '';
         card.innerHTML = `
-            <span class="selected-check">✓ Elegido</span>
-            <div class="ballot-num" style="background: ${c.accentColor}">#${c.ballotNumber}</div>
-            <div class="candidate-name">${c.name}</div>
-            <div class="candidate-party">${c.party}</div>
-            <div class="candidate-slogan">${c.slogan}</div>
+            <span class="selected-check"><span class="ms ms-sm">check_circle</span> Elegido</span>
+            <div class="candidate-top">
+                <img class="candidate-avatar" src="${escapeHtml(photo)}" alt="${escapeHtml(c.name)}"
+                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=20B2A6&color=fff&bold=true'">
+                <div>
+                    <span class="ballot-num" style="background: ${c.accentColor}">Tarjetón #${c.ballotNumber}</span>
+                    <div class="candidate-name">${escapeHtml(c.name)}</div>
+                    <div class="candidate-party">${escapeHtml(c.party)}</div>
+                </div>
+            </div>
+            <div class="candidate-slogan">${escapeHtml(c.slogan)}</div>
         `;
         grid.appendChild(card);
     });
@@ -102,13 +109,13 @@ async function submitCitizenVote(e) {
     const region = citySel.options[citySel.selectedIndex]?.dataset.region || 'CENTRO';
 
     if (!selectedCandidateId) {
-        feedback.innerHTML = `<div class="alert-banner alert-warn">Por favor seleccione un candidato en el tarjetón antes de emitir su voto.</div>`;
+        feedback.innerHTML = `<div class="alert-banner alert-warn"><span class="ms">warning</span>Por favor seleccione un candidato en el tarjetón antes de emitir su voto.</div>`;
         return;
     }
 
     const btn = document.getElementById('submitVoteBtn');
     btn.disabled = true;
-    btn.textContent = 'Verificando cédula y registrando voto...';
+    btn.innerHTML = '<span class="ms">hourglass_top</span> Verificando cédula y registrando voto...';
 
     try {
         const res = await fetch('/api/vote', {
@@ -127,32 +134,36 @@ async function submitCitizenVote(e) {
 
         const data = await res.json();
         if (data.nodeId) {
-            document.getElementById('activeNodeLabel').textContent = `Atendido por: ${data.nodeId}`;
+            document.getElementById('activeNodeLabel').textContent = `Nodo: ${data.nodeId}`;
         }
 
         if (res.ok && data.ticket) {
             feedback.innerHTML = `
                 <div class="alert-banner alert-success">
-                    ✔ Voto verificado y registrado exitosamente en Kafka &amp; PostgreSQL. Su comprobante oficial se muestra abajo.
+                    <span class="ms">verified</span>
+                    <span>Voto verificado y registrado exitosamente. Su comprobante oficial se muestra abajo.</span>
                 </div>`;
             ticketBox.innerHTML = renderTicketHtml(data.ticket, false);
+            fetchLiveGlobal();
         } else if (res.status === 409 && data.ticket) {
             feedback.innerHTML = `
                 <div class="alert-banner alert-warn">
-                    ⚠ <strong>Voto Duplicado Bloqueado:</strong> ${escapeHtml(data.message)}
+                    <span class="ms">gpp_maybe</span>
+                    <span><strong>Voto Duplicado Bloqueado:</strong> ${escapeHtml(data.message)}</span>
                 </div>`;
             ticketBox.innerHTML = renderTicketHtml(data.ticket, true);
         } else {
             feedback.innerHTML = `
                 <div class="alert-banner alert-error">
-                    ✖ [HTTP ${res.status}] ${escapeHtml(data.message || 'No fue posible registrar el voto.')}
+                    <span class="ms">gpp_bad</span>
+                    <span><strong>[HTTP ${res.status}]</strong> ${escapeHtml(data.message || 'No fue posible registrar el voto.')}</span>
                 </div>`;
         }
     } catch (err) {
-        feedback.innerHTML = `<div class="alert-banner alert-error">Error de red al contactar el balanceador AWS: ${escapeHtml(err.message)}</div>`;
+        feedback.innerHTML = `<div class="alert-banner alert-error"><span class="ms">wifi_off</span>Error de red: ${escapeHtml(err.message)}</div>`;
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Verificar Cédula y Emitir Voto Oficial';
+        btn.innerHTML = '<span class="ms">verified_user</span> Verificar Cédula y Emitir Voto Oficial';
     }
 }
 
@@ -165,7 +176,7 @@ function renderTicketHtml(ticket, isDuplicate) {
         <div class="ticket-box ${isDuplicate ? 'duplicate' : ''}">
             <div class="ticket-header">
                 <div>
-                    <div style="font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: ${isDuplicate ? '#b45309' : '#047857'};">
+                    <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: ${isDuplicate ? '#b45309' : '#0f6b63'};">
                         ${isDuplicate ? 'COMPROBANTE EXISTENTE — YA EJERCIÓ SU VOTO' : 'CERTIFICADO ELECTORAL DIGITAL VERIFICADO'}
                     </div>
                     <div style="font-size: 1.05rem; font-weight: 800; margin-top: 2px;">
@@ -202,14 +213,16 @@ function renderTicketHtml(ticket, isDuplicate) {
                 </div>
                 <div style="grid-column: 1 / -1;">
                     <div class="ticket-field-label">Sello Criptográfico SHA-256</div>
-                    <div class="ticket-field-value mono" style="color: #1e3a8a;">${escapeHtml(ticket.verificationHash)}</div>
+                    <div class="ticket-field-value mono" style="color: var(--brand-darker);">${escapeHtml(ticket.verificationHash)}</div>
                 </div>
             </div>
 
-            <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; margin-top: 1.1rem; padding-top: 0.9rem; border-top: 1px dashed #cbd5e1;">
-                <button type="button" class="btn btn-outline btn-sm" onclick="window.print()">Imprimir Comprobante</button>
+            <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 0.85rem; border-top: 1px dashed #b9d9d6;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="window.print()">
+                    <span class="ms ms-sm">print</span> Imprimir Comprobante
+                </button>
                 <button type="button" class="btn btn-primary btn-sm" onclick="selectElection('${otherElection}'); window.scrollTo({top: 0, behavior: 'smooth'});">
-                    ${otherLabel} →
+                    <span class="ms ms-sm">how_to_vote</span> ${otherLabel}
                 </button>
             </div>
         </div>
@@ -226,38 +239,34 @@ async function lookupTickets(e) {
         const res = await fetch(`/api/tickets/${encodeURIComponent(cedula)}`);
         const data = await res.json();
         if (!res.ok) {
-            container.innerHTML = `<div class="alert-banner alert-error">${escapeHtml(data.message || 'Cédula inválida')}</div>`;
+            container.innerHTML = `<div class="alert-banner alert-error"><span class="ms">error</span>${escapeHtml(data.message || 'Cédula inválida')}</div>`;
             return;
         }
         if (!data.tickets || data.tickets.length === 0) {
-            container.innerHTML = `<div class="alert-banner alert-success">La cédula <strong>${escapeHtml(cedula)}</strong> aún no registra votos emitidos. Está habilitada para votar.</div>`;
+            container.innerHTML = `<div class="alert-banner alert-success"><span class="ms">check_circle</span>La cédula <strong>${escapeHtml(cedula)}</strong> aún no registra votos emitidos. Está habilitada para votar.</div>`;
             return;
         }
         container.innerHTML = data.tickets.map(t => renderTicketHtml(t, true)).join('');
     } catch (err) {
-        container.innerHTML = `<div class="alert-banner alert-error">Error consultando ticket: ${escapeHtml(err.message)}</div>`;
+        container.innerHTML = `<div class="alert-banner alert-error"><span class="ms">wifi_off</span>Error consultando ticket: ${escapeHtml(err.message)}</div>`;
     }
 }
 
 async function fetchLiveGlobal() {
     try {
         const res = await fetch('/api/results/global');
-        if (res.ok) {
-            renderLivePreview(await res.json());
-        }
+        if (res.ok) renderLivePreview(await res.json());
     } catch (_) {}
 }
 
 function connectLiveStream() {
     const es = new EventSource('/api/results/global/stream');
     es.addEventListener('global-results', ev => {
-        try {
-            renderLivePreview(JSON.parse(ev.data));
-        } catch (_) {}
+        try { renderLivePreview(JSON.parse(ev.data)); } catch (_) {}
     });
     es.onopen = () => {
         const b = document.getElementById('sseBadge');
-        b.textContent = 'SSE En Vivo (1s)';
+        b.textContent = 'En Vivo (1s)';
         b.className = 'badge badge-ok';
     };
     es.onerror = () => {
@@ -282,10 +291,11 @@ function renderLivePreview(data) {
 function renderMiniElection(elId, candidates, totals, reals, sims, grandTotal) {
     const container = document.getElementById(elId);
     if (!candidates.length) {
-        container.innerHTML = '<div style="font-size: 0.82rem; color: var(--ink-soft);">Cargando candidatos...</div>';
+        container.innerHTML = '<div style="font-size: 0.8rem; color: var(--ink-soft);">Cargando candidatos...</div>';
         return;
     }
-    const rows = candidates.map(c => {
+    const sorted = [...candidates].sort((a, b) => (totals[b.id] || 0) - (totals[a.id] || 0));
+    container.innerHTML = sorted.map(c => {
         const tot = Number(totals[c.id] || 0);
         const real = Number(reals[c.id] || 0);
         const sim = Number(sims[c.id] || 0);
@@ -294,12 +304,16 @@ function renderMiniElection(elId, candidates, totals, reals, sims, grandTotal) {
         const totalPct = grandTotal > 0 ? ((tot / grandTotal) * 100).toFixed(1) : '0.0';
         return `
             <div style="margin-bottom: 0.65rem;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 0.22rem;">
-                    <strong>${escapeHtml(c.name)}</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.81rem; margin-bottom: 0.25rem; gap: 0.4rem;">
+                    <span style="display: inline-flex; align-items: center; gap: 0.45rem;">
+                        <img class="candidate-avatar-sm" style="width: 24px; height: 24px;" src="${escapeHtml(c.photoUrl || '')}" alt="${escapeHtml(c.name)}"
+                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=20B2A6&color=fff'">
+                        <strong>${escapeHtml(c.name)}</strong>
+                    </span>
                     <span>
-                        <strong style="color: #047857;">${real} R</strong> ·
-                        <span style="color: #4f46e5;">${sim} S</span> ·
-                        <strong>${tot.toLocaleString('es-CO')} (${totalPct}%)</strong>
+                        <strong style="color: #c2410c;">${real} R</strong> ·
+                        <span style="color: var(--brand-dark);">${sim} S</span> ·
+                        <strong>${totalPct}%</strong>
                     </span>
                 </div>
                 <div class="stacked-bar">
@@ -308,8 +322,7 @@ function renderMiniElection(elId, candidates, totals, reals, sims, grandTotal) {
                 </div>
             </div>
         `;
-    });
-    container.innerHTML = rows.join('');
+    }).join('');
 }
 
 function escapeHtml(str) {

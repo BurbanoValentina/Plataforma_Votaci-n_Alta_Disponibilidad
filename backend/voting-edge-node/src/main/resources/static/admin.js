@@ -1,16 +1,31 @@
 let latestOverview = null;
 let candidateMap = {};
 let searchTimer = null;
+const adminMap = new ColombiaElectoralMap('adminColombiaMap', 'ALL');
 
 async function initAdmin() {
+    adminMap.init();
     await refreshOverview();
-    await Promise.all([refreshAuditVotes(), refreshVoters(), refreshIncidents(), loadTelegramConfig()]);
-    const wh = document.getElementById('tgWebhookUrl');
-    if (wh) wh.textContent = window.location.origin + '/api/telegram/webhook';
+    await Promise.all([
+        refreshAuditVotes(),
+        refreshVoters(),
+        refreshIncidents(),
+        loadTelegramConfig(),
+        refreshTelegramActivity()
+    ]);
     connectAdminStreams();
     setInterval(refreshOverview, 3000);
     setInterval(refreshAuditVotes, 5000);
     setInterval(refreshIncidents, 6000);
+    setInterval(refreshTelegramActivity, 2500);
+}
+
+function filterAdminMap(region) {
+    ['ALL', 'CENTRO', 'NORTE', 'SUR', 'OESTE', 'ESTE'].forEach(r => {
+        const btn = document.getElementById('admMapBtn' + r);
+        if (btn) btn.className = 'btn btn-sm ' + (r === region ? 'btn-primary' : 'btn-outline');
+    });
+    adminMap.setRegionFilter(region);
 }
 
 async function refreshOverview() {
@@ -20,7 +35,7 @@ async function refreshOverview() {
         const data = await res.json();
         latestOverview = data;
 
-        document.getElementById('adminNodeLabel').textContent = `Atendido por: ${data.servedByNode} (${data.availabilityZone})`;
+        document.getElementById('adminNodeLabel').textContent = `Atendido por: ${data.servedByNode}`;
 
         if (Array.isArray(data.candidates)) {
             candidateMap = {};
@@ -120,11 +135,17 @@ function renderGlobalKpisAndNational(g, dbCounters, ktableSize) {
             <tr>
                 <td><strong>#${c.ballotNumber}</strong></td>
                 <td>
-                    <strong>${escapeHtml(c.name)}</strong>
-                    <div style="font-size: 0.75rem; color: var(--ink-soft);">${escapeHtml(c.party)}</div>
+                    <div style="display: flex; align-items: center; gap: 0.55rem;">
+                        <img class="candidate-avatar-sm" src="${escapeHtml(c.photoUrl || '')}" alt="${escapeHtml(c.name)}"
+                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=20B2A6&color=fff'">
+                        <div>
+                            <strong>${escapeHtml(c.name)}</strong>
+                            <div style="font-size: 0.72rem; color: var(--ink-soft);">${escapeHtml(c.party)}</div>
+                        </div>
+                    </div>
                 </td>
                 <td><span class="badge badge-real">${r.toLocaleString('es-CO')}</span></td>
-                <td><span class="badge badge-sim">${s.toLocaleString('es-CO')}</span></td>
+                <td><span class="badge badge-brand">${s.toLocaleString('es-CO')}</span></td>
                 <td><strong>${t.toLocaleString('es-CO')}</strong></td>
                 <td><strong>${pct}%</strong></td>
                 <td>
@@ -145,6 +166,7 @@ function renderRegionalTable() {
     const tbody = document.getElementById('regionalTableBody');
     const rows = [];
 
+    // Only display REGIONAL election candidates (never mix National candidates into Regional table!)
     Object.entries(regions).forEach(([regionKey, data]) => {
         if (filter !== 'ALL' && regionKey !== filter) return;
         const rawVotes = data?.rawVotes || {};
@@ -153,8 +175,8 @@ function renderRegionalTable() {
         const weighted = data?.weightedVotes || {};
         const mult = data?.weightMultiplier || 1.0;
 
-        const entries = Object.keys(rawVotes);
-        if (entries.length === 0) {
+        const regionalKeys = Object.keys(rawVotes).filter(id => candidateMap[id]?.electionType === 'REGIONAL');
+        if (regionalKeys.length === 0) {
             rows.push(`
                 <tr>
                     <td><strong>${regionKey}</strong> <span class="badge badge-neutral">x${Number(mult).toFixed(2)}</span></td>
@@ -163,15 +185,20 @@ function renderRegionalTable() {
             `);
             return;
         }
-        entries.sort((a, b) => (weighted[b] || 0) - (weighted[a] || 0)).forEach(candId => {
+        regionalKeys.sort((a, b) => (weighted[b] || 0) - (weighted[a] || 0)).forEach(candId => {
             const prof = candidateMap[candId];
-            const name = prof ? prof.name : candId;
             rows.push(`
                 <tr>
                     <td><strong>${regionKey}</strong> <span class="badge badge-neutral">x${Number(mult).toFixed(2)}</span></td>
-                    <td><strong>${escapeHtml(name)}</strong></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.45rem;">
+                            <img class="candidate-avatar-sm" style="width: 26px; height: 26px;" src="${escapeHtml(prof?.photoUrl || '')}" alt="${escapeHtml(prof?.name || candId)}"
+                                 onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(prof?.name || candId)}&background=20B2A6&color=fff'">
+                            <strong>${escapeHtml(prof ? prof.name : candId)}</strong>
+                        </div>
+                    </td>
                     <td><span class="badge badge-real">${Number(realVotes[candId] || 0).toLocaleString('es-CO')}</span></td>
-                    <td><span class="badge badge-sim">${Number(simVotes[candId] || 0).toLocaleString('es-CO')}</span></td>
+                    <td><span class="badge badge-brand">${Number(simVotes[candId] || 0).toLocaleString('es-CO')}</span></td>
                     <td>${Number(rawVotes[candId] || 0).toLocaleString('es-CO')}</td>
                     <td><strong style="color: #6b21a8;">${Number(weighted[candId] || 0).toFixed(2)} pts</strong></td>
                 </tr>
@@ -185,7 +212,7 @@ function renderRegionalTable() {
 function renderNodes(nodes, currentNode) {
     const grid = document.getElementById('nodesGrid');
     if (!nodes.length) {
-        grid.innerHTML = '<div style="font-size: 0.84rem; color: var(--ink-soft);">Registrando nodos activos...</div>';
+        grid.innerHTML = '<div style="font-size: 0.82rem; color: var(--ink-soft);">Registrando nodos activos...</div>';
         return;
     }
     const totalReqs = nodes.reduce((acc, n) => acc + Number(n.requests_handled || 0) + Number(n.votes_processed || 0), 0) || 1;
@@ -196,17 +223,17 @@ function renderNodes(nodes, currentNode) {
         const isCurrent = n.node_id === currentNode;
         return `
             <div class="node-card ${isCurrent ? 'active-node' : ''}">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                    <strong class="mono">${escapeHtml(n.node_id)}</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                    <strong class="mono" style="font-size: 0.76rem;">${escapeHtml(n.node_id)}</strong>
                     <span class="badge ${isCurrent ? 'badge-ok' : 'badge-neutral'}">${escapeHtml(n.availability_zone || 'us-east-1')}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--ink-muted); margin-bottom: 0.35rem;">
-                    <span>Peticiones: <strong>${reqs.toLocaleString('es-CO')}</strong></span>
+                <div style="display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--ink-muted); margin-bottom: 0.3rem;">
+                    <span>Req: <strong>${reqs.toLocaleString('es-CO')}</strong></span>
                     <span>Votos: <strong>${votes.toLocaleString('es-CO')}</strong></span>
-                    <span>Carga: <strong>${share}%</strong></span>
+                    <span><strong>${share}%</strong></span>
                 </div>
                 <div class="stacked-bar" style="height: 8px;">
-                    <div class="bar-real" style="width: ${share}%"></div>
+                    <div class="bar-sim" style="width: ${share}%"></div>
                 </div>
             </div>
         `;
@@ -215,13 +242,17 @@ function renderNodes(nodes, currentNode) {
 
 async function pingLoadBalancer() {
     const log = document.getElementById('lbPingLog');
-    const hits = [];
-    for (let i = 0; i < 6; i++) {
-        const res = await fetch('/api/health?t=' + Date.now() + '-' + i);
+    log.innerHTML = 'Enviando 6 pruebas HTTP al AWS Application Load Balancer...';
+    const items = [];
+    for (let i = 1; i <= 6; i++) {
+        const t0 = performance.now();
+        const res = await fetch('/api/health?probe=' + Date.now() + '-' + i);
+        const ms = Math.round(performance.now() - t0);
         const data = await res.json();
-        hits.push(data.nodeId);
+        const isNode1 = String(data.nodeId || '').includes('node-1');
+        items.push(`<span class="badge ${isNode1 ? 'badge-brand' : 'badge-real'} mono">#${i} ${escapeHtml(data.nodeId)} · ${ms}ms</span>`);
     }
-    log.innerHTML = `<strong>6 pruebas consecutivas vía AWS ALB:</strong> ${hits.map(h => `<span class="badge badge-neutral mono">${escapeHtml(h)}</span>`).join(' ')}`;
+    log.innerHTML = `<div style="margin-bottom: 0.3rem;"><strong>Resultado en vivo del balanceo Round-Robin (AWS ALB):</strong></div><div style="display:flex; flex-wrap:wrap; gap:0.35rem;">${items.join('')}</div>`;
     refreshOverview();
 }
 
@@ -267,8 +298,8 @@ async function setSimSpeed(rateMs, batchSize) {
 async function triggerBurst() {
     const res = await fetch('/api/admin/simulator/burst?count=25', { method: 'POST' });
     const data = await res.json();
-    document.getElementById('simFeedback').textContent = `⚡ Ráfaga de ${data.count} votos simulados despachada desde ${data.servedByNode}.`;
-    setTimeout(() => { refreshOverview(); refreshAuditVotes(); }, 1200);
+    document.getElementById('simFeedback').textContent = `Ráfaga de ${data.count} votos simulados despachada desde ${data.servedByNode}.`;
+    setTimeout(() => { refreshOverview(); refreshAuditVotes(); adminMap.refresh(); }, 1200);
 }
 
 async function triggerBotAttack() {
@@ -277,7 +308,7 @@ async function triggerBotAttack() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ triggerBotAttack: true })
     });
-    document.getElementById('simFeedback').textContent = '🛡️ Ataque Bot (18 votos rápidos desde 1 IP) despachado — observe la Tabla 5 de incidentes Anti-Fraude.';
+    document.getElementById('simFeedback').textContent = 'Ataque Bot (18 votos rápidos desde 1 IP) despachado — observe la Tabla 5.';
     setTimeout(() => { refreshIncidents(); refreshOverview(); }, 2500);
 }
 
@@ -313,7 +344,7 @@ async function refreshAuditVotes() {
                     <td><span class="badge ${isNac ? 'badge-nac' : 'badge-reg'}">${escapeHtml(v.election_type)}</span></td>
                     <td><strong>${escapeHtml(v.candidate_name)}</strong></td>
                     <td>${escapeHtml(v.city)} <span style="color: var(--ink-soft);">(${escapeHtml(v.region)})</span></td>
-                    <td><span class="badge ${isReal ? 'badge-real' : 'badge-sim'}">${isReal ? 'REAL' : 'SIMULADO'}</span></td>
+                    <td><span class="badge ${isReal ? 'badge-real' : 'badge-brand'}">${isReal ? 'REAL' : 'SIMULADO'}</span></td>
                     <td class="mono">${escapeHtml(v.handled_by_node)}</td>
                     <td class="mono">${escapeHtml(v.ip_address)}</td>
                     <td>${escapeHtml(dt)}</td>
@@ -389,13 +420,13 @@ async function refreshIncidents() {
                 blockedBox.innerHTML = '';
             } else {
                 blockedBox.innerHTML = `
-                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 0.75rem 0.9rem;">
-                        <div style="font-size: 0.78rem; font-weight: 800; color: #991b1b; margin-bottom: 0.45rem;">
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 0.7rem 0.85rem;">
+                        <div style="font-size: 0.76rem; font-weight: 800; color: #991b1b; margin-bottom: 0.4rem;">
                             ENTIDADES BLOQUEADAS ACTIVAS (${blocked.length})
                         </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <div style="display: flex; flex-direction: column; gap: 0.35rem;">
                             ${blocked.map(b => `
-                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.78rem;">
                                     <span><strong class="mono">${escapeHtml(b.entity_key)}</strong> — ${escapeHtml(b.reason)}</span>
                                     <button class="btn btn-outline btn-sm" onclick="unblockEntity('${escapeHtml(b.entity_key)}')">Desbloquear</button>
                                 </div>
@@ -419,7 +450,7 @@ async function refreshIncidents() {
                     <td class="mono"><strong>${escapeHtml(inc.ip_address)}</strong></td>
                     <td><span class="badge ${isBlocked ? 'badge-danger' : 'badge-warn'}">${escapeHtml(inc.risk_level)}</span></td>
                     <td><strong>${inc.vote_count}</strong></td>
-                    <td style="font-size: 0.8rem;">${escapeHtml(inc.reason)}</td>
+                    <td style="font-size: 0.78rem;">${escapeHtml(inc.reason)}</td>
                     <td>${escapeHtml(dt)}</td>
                 </tr>
             `;
@@ -433,6 +464,12 @@ async function unblockEntity(entityKey) {
     refreshOverview();
 }
 
+// ==================== Telegram Control Center ====================
+
+function toggleTgConfigPanel() {
+    document.getElementById('tgConfigPanel').classList.toggle('hidden');
+}
+
 async function loadTelegramConfig() {
     try {
         const res = await fetch('/api/telegram/config');
@@ -443,11 +480,11 @@ async function loadTelegramConfig() {
         document.getElementById('tgNotifyVotes').checked = cfg.notifyVotes !== false;
         document.getElementById('tgNotifyFraud').checked = cfg.notifyFraud !== false;
         if (cfg.tokenConfigured) {
-            document.getElementById('tgBotToken').placeholder = 'Token guardado (escribe uno nuevo solo para reemplazar)';
+            document.getElementById('tgBotToken').placeholder = 'Token guardado (escribe uno nuevo solo para cambiarlo)';
         }
         const badge = document.getElementById('tgStatusBadge');
         if (cfg.enabled && cfg.tokenConfigured) {
-            badge.textContent = 'CONECTADO Y ACTIVO';
+            badge.textContent = 'ACTIVO (POLLING)';
             badge.className = 'badge badge-ok';
         } else if (cfg.tokenConfigured) {
             badge.textContent = 'CONFIGURADO (PAUSADO)';
@@ -477,29 +514,73 @@ async function saveTelegramConfig(e) {
     });
     if (res.ok) {
         document.getElementById('tgBotToken').value = '';
-        document.getElementById('tgFeedback').textContent = '✔ Configuración de Telegram guardada en PostgreSQL (sincronizada en todos los nodos AWS).';
+        document.getElementById('tgFeedback').textContent = '✔ Bot de Telegram guardado y sincronizado en todos los nodos AWS. Presiona "Enviar Menú / Probar".';
         loadTelegramConfig();
     }
 }
 
 async function testTelegram() {
     const fb = document.getElementById('tgFeedback');
-    fb.textContent = 'Enviando mensaje de prueba a Telegram...';
+    fb.textContent = 'Enviando menú interactivo de prueba a Telegram...';
     const res = await fetch('/api/telegram/test', { method: 'POST' });
     const data = await res.json();
     fb.textContent = data.ok
-        ? '✔ Mensaje de prueba enviado exitosamente a tu Telegram.'
-        : '✖ Error Telegram: ' + (data.error || data.response || 'Revisa Bot Token y Chat ID.');
+        ? '✔ Menú interactivo enviado a Telegram. Ya puedes pasarle tu Telegram al profesor.'
+        : '✖ ' + (data.error || 'Abre "Configurar API" e ingresa tu Bot Token y Chat ID.');
+    refreshTelegramActivity();
+}
+
+async function sendTelegramRunoff() {
+    const fb = document.getElementById('tgFeedback');
+    fb.textContent = 'Enviando Informe de Segunda Vuelta a Telegram...';
+    const res = await fetch('/api/telegram/send-runoff', { method: 'POST' });
+    const data = await res.json();
+    fb.textContent = data.ok ? '✔ Informe de Segunda Vuelta enviado a Telegram.' : '✖ ' + (data.error || 'Configura primero tu Bot Token y Chat ID.');
+    refreshTelegramActivity();
+}
+
+async function sendTelegramNodes() {
+    const fb = document.getElementById('tgFeedback');
+    fb.textContent = 'Enviando Informe de Distribución de Carga AWS a Telegram...';
+    const res = await fetch('/api/telegram/send-nodes', { method: 'POST' });
+    const data = await res.json();
+    fb.textContent = data.ok ? '✔ Informe de Nodos AWS enviado a Telegram.' : '✖ ' + (data.error || 'Configura primero tu Bot Token y Chat ID.');
+    refreshTelegramActivity();
 }
 
 async function sendTelegramSummary() {
     const fb = document.getElementById('tgFeedback');
-    fb.textContent = 'Enviando resumen electoral y predicción de segunda vuelta...';
+    fb.textContent = 'Enviando Resumen Electoral Completo a Telegram...';
     const res = await fetch('/api/telegram/send-summary', { method: 'POST' });
     const data = await res.json();
-    fb.textContent = data.ok
-        ? '✔ Resumen electoral en vivo enviado a tu Telegram.'
-        : '✖ Error Telegram: ' + (data.error || data.response || 'Configura primero Bot Token y Chat ID.');
+    fb.textContent = data.ok ? '✔ Resumen Electoral enviado a Telegram.' : '✖ ' + (data.error || 'Configura primero tu Bot Token y Chat ID.');
+    refreshTelegramActivity();
+}
+
+async function refreshTelegramActivity() {
+    try {
+        const res = await fetch('/api/telegram/activity?limit=12');
+        if (!res.ok) return;
+        const data = await res.json();
+        const feed = document.getElementById('tgActivityFeed');
+        const events = data.events || [];
+        if (!events.length) {
+            feed.innerHTML = '<div style="font-size: 0.77rem; color: var(--ink-soft);">Aún no hay interacciones desde Telegram. Cuando el profesor pida un informe, lance una simulación o cambie el estado electoral en Telegram, aparecerá aquí en vivo.</div>';
+            return;
+        }
+        feed.innerHTML = events.map(ev => {
+            const t = ev.created_at ? new Date(ev.created_at).toLocaleTimeString('es-CO') : '';
+            return `
+                <div class="tg-feed-item">
+                    <div style="display: flex; justify-content: space-between; gap: 0.4rem; margin-bottom: 2px;">
+                        <span class="badge badge-brand">${escapeHtml(ev.action_type)}</span>
+                        <span style="font-size: 0.7rem; color: var(--ink-soft);">${escapeHtml(t)} · ${escapeHtml(ev.handled_by_node)}</span>
+                    </div>
+                    <div><strong>${escapeHtml(ev.message)}</strong></div>
+                </div>
+            `;
+        }).join('');
+    } catch (_) {}
 }
 
 function escapeHtml(str) {

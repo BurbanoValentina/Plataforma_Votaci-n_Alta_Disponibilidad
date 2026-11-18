@@ -3,25 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administración Electoral — Monitoreo Distribuido en Tiempo Real</title>
+    <title>Panel de Administración Electoral — Monitoreo Distribuido AWS</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
     <nav class="topbar">
         <div class="topbar-inner">
-            <a class="brand" href="/">
-                <div class="brand-seal">A</div>
+            <a class="brand" href="/admin.html" title="Centro de Administración Electoral">
+                <div class="brand-logo-wrap">
+                    <img src="/assets/logo.png" alt="Logo Administración Electoral">
+                </div>
                 <div>
                     <div class="brand-title">Centro de Administración Electoral</div>
-                    <div class="brand-sub">Distribución de Carga AWS · Kafka · RabbitMQ · PostgreSQL</div>
+                    <div class="brand-sub">AWS ALB Multi-AZ · Kafka · RabbitMQ · PostgreSQL · Telegram Bot</div>
                 </div>
             </a>
             <div class="nav-links">
-                <a class="nav-link" href="/">Cabina de Votación</a>
-                <a class="nav-link active" href="/admin.html">Panel de Administración</a>
-                <a class="nav-link" href="/prediccion.html">Segunda Vuelta</a>
-                <a class="nav-link" href="/dashboard-global.html">Resultados Nacionales</a>
-                <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
+                <a class="nav-link" href="/"><span class="ms ms-sm">how_to_vote</span>Cabina de Votación</a>
+                <a class="nav-link active" href="/admin.html"><span class="ms ms-sm">admin_panel_settings</span>Panel de Administración</a>
+                <a class="nav-link" href="/prediccion.html"><span class="ms ms-sm">leaderboard</span>Segunda Vuelta</a>
+                <a class="nav-link" href="/dashboard-global.html"><span class="ms ms-sm">public</span>Resultados Nacionales</a>
+                <a class="nav-link" href="/dashboard-regional.html"><span class="ms ms-sm">map</span>Resultados Regionales</a>
                 <span class="node-pill">
                     <span class="pulse-dot"></span>
                     <span id="adminNodeLabel">Conectando AWS...</span>
@@ -31,108 +34,210 @@
     </nav>
 
     <main class="container">
-        <!-- Row 1: KPIs Differentiating REAL vs SIMULATED -->
+        <!-- Row 1: KPIs -->
         <section class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Total Votos Consolidados</div>
+            <div class="kpi-card brand">
+                <div class="kpi-label"><span class="ms ms-sm">how_to_vote</span>Total Votos Consolidados</div>
                 <div class="kpi-value" id="kpiTotal">0</div>
                 <div class="kpi-meta" id="kpiSplitElections">Nacional: 0 · Regional: 0</div>
             </div>
             <div class="kpi-card real">
-                <div class="kpi-label" style="color: #047857;">Votos Reales (Ciudadanos)</div>
-                <div class="kpi-value" style="color: #065f46;" id="kpiReal">0</div>
+                <div class="kpi-label" style="color: #c2410c;"><span class="ms ms-sm">person_check</span>Votos Reales (Ciudadanos)</div>
+                <div class="kpi-value" style="color: #9a3412;" id="kpiReal">0</div>
                 <div class="kpi-meta" id="kpiRealPct">0.0% del total emitido</div>
             </div>
             <div class="kpi-card sim">
-                <div class="kpi-label" style="color: #3730a3;">Votos Simulados (En Vivo)</div>
+                <div class="kpi-label" style="color: #3730a3;"><span class="ms ms-sm">bolt</span>Votos Simulados (En Vivo)</div>
                 <div class="kpi-value" style="color: #312e81;" id="kpiSim">0</div>
                 <div class="kpi-meta" id="kpiSimPct">0.0% del total emitido</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">Padrón KTable (Kafka)</div>
+                <div class="kpi-label"><span class="ms ms-sm">badge</span>Padrón KTable (Kafka)</div>
                 <div class="kpi-value" id="kpiVoters">0</div>
-                <div class="kpi-meta" id="kpiTickets">Tickets únicos emitidos: 0</div>
+                <div class="kpi-meta" id="kpiTickets">Tickets ciudadanos únicos: 0</div>
             </div>
             <div class="kpi-card danger">
-                <div class="kpi-label" style="color: #991b1b;">Alertas Anti-Fraude (State)</div>
+                <div class="kpi-label" style="color: #991b1b;"><span class="ms ms-sm">gpp_maybe</span>Alertas Anti-Fraude (State)</div>
                 <div class="kpi-value" style="color: #991b1b;" id="kpiIncidents">0</div>
-                <div class="kpi-meta">IPs sospechosas / bloqueadas</div>
+                <div class="kpi-meta">Bot / Duplicados / Suplantación</div>
             </div>
         </section>
 
-        <!-- Row 2: Controls (Lifecycle State Pattern + Live Simulator + AWS Load Balancing) -->
-        <div class="grid-equal">
-            <!-- Control del Ciclo Electoral (GoF State) -->
+        <!-- Row 2: 4-Card Control Grid (GoF State + Simulator + AWS ALB + Telegram Command Center) -->
+        <div class="grid-4-controls">
+            <!-- Card 1: Control Electoral (GoF State) -->
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Control Electoral (Patrón GoF State)</div>
-                        <div class="card-subtitle">Cambia el estado en todos los nodos AWS en tiempo real</div>
+                        <div class="card-title"><span class="ms">tune</span>Control Electoral (Patrón GoF State)</div>
+                        <div class="card-subtitle">Cambia el estado en ambos nodos AWS (también controlable desde Telegram)</div>
                     </div>
                     <span class="badge badge-ok" id="ctrlStateBadge">HABILITADO</span>
                 </div>
-                <div style="display: flex; gap: 0.55rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                    <button class="btn btn-success btn-sm" onclick="setLifecycle('HABILITADO')">HABILITADO</button>
-                    <button class="btn btn-warning btn-sm" onclick="setLifecycle('EN_AUDITORIA')">EN_AUDITORIA</button>
-                    <button class="btn btn-danger btn-sm" onclick="setLifecycle('CERRADO')">CERRADO</button>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.9rem;">
+                    <button class="btn btn-success btn-sm" onclick="setLifecycle('HABILITADO')">
+                        <span class="ms ms-sm">check_circle</span> HABILITADO
+                    </button>
+                    <button class="btn btn-warning btn-sm" onclick="setLifecycle('EN_AUDITORIA')">
+                        <span class="ms ms-sm">fact_check</span> EN_AUDITORIA
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="setLifecycle('CERRADO')">
+                        <span class="ms ms-sm">lock</span> CERRADO
+                    </button>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 0.9rem; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.72rem 0.9rem; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; margin-top: auto;">
                     <div>
-                        <div style="font-size: 0.84rem; font-weight: 700;">Modo Censo Estricto (Kafka KTable)</div>
-                        <div style="font-size: 0.76rem; color: var(--ink-soft);">Si está activo, solo cédulas pre-registradas pueden votar (HTTP 403)</div>
+                        <div style="font-size: 0.83rem; font-weight: 700;">Modo Censo Estricto (Kafka KTable)</div>
+                        <div style="font-size: 0.75rem; color: var(--ink-soft);">Activo = solo cédulas en Tabla 4 pueden votar (HTTP 403)</div>
                     </div>
                     <button class="btn btn-outline btn-sm" id="strictModeBtn" onclick="toggleStrictMode()">Desactivado</button>
                 </div>
             </div>
 
-            <!-- Control del Simulador en Tiempo Real -->
+            <!-- Card 2: Simulador en Tiempo Real -->
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Simulador de Votación en Tiempo Real</div>
-                        <div class="card-subtitle">Genera tráfico SIMULADO continuo a través de Kafka y RabbitMQ</div>
+                        <div class="card-title"><span class="ms">speed</span>Simulador de Votación en Tiempo Real</div>
+                        <div class="card-subtitle">Emite flujo SIMULADO continuo a Kafka y RabbitMQ</div>
                     </div>
                     <span class="badge badge-sim" id="simStatusBadge">ACTIVO</span>
                 </div>
-                <div style="display: flex; gap: 0.55rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+                <div style="display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.8rem;">
                     <button class="btn btn-primary btn-sm" id="simToggleBtn" onclick="toggleSimulator()">Pausar Simulador</button>
                     <button class="btn btn-outline btn-sm" onclick="setSimSpeed(3000, 1)">Lento</button>
                     <button class="btn btn-outline btn-sm" onclick="setSimSpeed(1800, 2)">Normal</button>
                     <button class="btn btn-outline btn-sm" onclick="setSimSpeed(700, 4)">Alto / Estrés</button>
                 </div>
-                <div style="display: flex; gap: 0.55rem; flex-wrap: wrap;">
-                    <button class="btn btn-success btn-sm" onclick="triggerBurst()">⚡ Ráfaga +25 Votos Simulados</button>
-                    <button class="btn btn-danger btn-sm" onclick="triggerBotAttack()">🛡️ Simular Ataque Bot (IP)</button>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-success btn-sm" onclick="triggerBurst()">
+                        <span class="ms ms-sm">bolt</span> Ráfaga +25 Votos Simulados
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="triggerBotAttack()">
+                        <span class="ms ms-sm">security</span> Simular Ataque Bot (IP)
+                    </button>
                 </div>
-                <div id="simFeedback" style="font-size: 0.8rem; color: var(--ink-muted); margin-top: 0.65rem;"></div>
+                <div id="simFeedback" style="font-size: 0.79rem; color: var(--ink-muted); margin-top: 0.65rem;"></div>
             </div>
 
-            <!-- Monitor de Distribución de Carga AWS -->
+            <!-- Card 3: Distribución de Carga (AWS ALB) con guía de exposición -->
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Distribución de Carga (AWS ALB)</div>
-                        <div class="card-subtitle">Balanceo activo entre nodos de aplicación distribuidos</div>
+                        <div class="card-title"><span class="ms">hub</span>Distribución de Carga (AWS ALB Multi-AZ)</div>
+                        <div class="card-subtitle">Balanceo Round-Robin activo entre 2 instancias EC2 en distintas zonas</div>
                     </div>
-                    <button class="btn btn-outline btn-sm" onclick="pingLoadBalancer()">Probar Balanceo</button>
+                    <button class="btn btn-primary btn-sm" onclick="pingLoadBalancer()">
+                        <span class="ms ms-sm">sync_alt</span> Probar Balanceo (6 req)
+                    </button>
                 </div>
-                <div id="nodesGrid" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
-                <div id="lbPingLog" style="font-size: 0.78rem; color: var(--ink-soft); margin-top: 0.65rem;"></div>
+                <div class="info-callout">
+                    <strong>¿Qué demuestra esta prueba en tu exposición?</strong> Al presionar <em>Probar Balanceo</em>, el navegador envía <strong>6 peticiones HTTP seguidas</strong> al <strong>AWS Application Load Balancer</strong>. Verás cómo el balanceador reparte automáticamente el tráfico entre <code>aws-node-1</code> (<code>us-east-1a</code>) y <code>aws-node-2</code> (<code>us-east-1b</code>), mostrando el header <code>X-Node-Id</code>, código <code>HTTP 200</code> y latencia real en milisegundos.
+                </div>
+                <div id="nodesGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.6rem;"></div>
+                <div id="lbPingLog" style="font-size: 0.77rem; color: var(--ink-muted); margin-top: 0.65rem;"></div>
+            </div>
+
+            <!-- Card 4: Centro de Control Bot de Telegram (Interacción del Profesor) -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title"><span class="ms">send</span>Bot de Telegram (Control Remoto en Vivo)</div>
+                        <div class="card-subtitle">Informes, Segunda Vuelta, Simulación y Control Electoral desde Telegram</div>
+                    </div>
+                    <span class="badge badge-neutral" id="tgStatusBadge">LISTO PARA CONECTAR</span>
+                </div>
+
+                <div style="display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    <button class="btn btn-primary btn-sm" onclick="sendTelegramRunoff()">
+                        <span class="ms ms-sm">leaderboard</span> Informe 2da Vuelta
+                    </button>
+                    <button class="btn btn-dark btn-sm" onclick="sendTelegramNodes()">
+                        <span class="ms ms-sm">hub</span> Informe Nodos AWS
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="sendTelegramSummary()">
+                        <span class="ms ms-sm">summarize</span> Resumen General
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="testTelegram()">
+                        <span class="ms ms-sm">smart_toy</span> Enviar Menú / Probar
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleTgConfigPanel()">
+                        <span class="ms ms-sm">settings</span> Configurar API
+                    </button>
+                </div>
+
+                <!-- Collapsible BotFather Config -->
+                <div id="tgConfigPanel" class="hidden" style="background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem;">
+                    <form onsubmit="saveTelegramConfig(event)" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem;">
+                        <div>
+                            <label for="tgBotToken">Bot Token (@BotFather)</label>
+                            <input type="text" id="tgBotToken" placeholder="7123456789:AAH...">
+                        </div>
+                        <div>
+                            <label for="tgChatId">Chat ID (usuario o grupo)</label>
+                            <input type="text" id="tgChatId" placeholder="Ej: 123456789">
+                        </div>
+                        <div style="grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: center; font-size: 0.78rem;">
+                            <label style="display: flex; align-items: center; gap: 0.35rem; margin: 0;">
+                                <input type="checkbox" id="tgEnabled" style="width: auto;"> Activar Bot (Polling automático)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.35rem; margin: 0;">
+                                <input type="checkbox" id="tgNotifyVotes" checked style="width: auto;"> Alertar votos reales
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.35rem; margin: 0;">
+                                <input type="checkbox" id="tgNotifyFraud" checked style="width: auto;"> Alertar fraudes
+                            </label>
+                            <button type="submit" class="btn btn-primary btn-sm" style="margin-left: auto;">Guardar Config</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="tgFeedback" style="font-size: 0.78rem; color: var(--brand-darker); font-weight: 600; margin-bottom: 0.45rem;"></div>
+
+                <!-- Live Feed of Professor's Actions from Telegram -->
+                <div style="font-size: 0.74rem; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem;">
+                    Actividad en Vivo desde Telegram (Comandos del Profesor)
+                </div>
+                <div class="tg-feed" id="tgActivityFeed">
+                    <div style="font-size: 0.78rem; color: var(--ink-soft);">Esperando interacciones desde Telegram...</div>
+                </div>
             </div>
         </div>
 
-        <!-- Row 3: Live Results Tables (Nacional & Regional) -->
-        <div class="grid-equal">
-            <!-- Tabla 1: Escrutinio Nacional -->
+        <!-- Row 3: Interactive Live Map of Colombia -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><span class="ms">public</span>Mapa Electoral de Colombia en Vivo (Puntos Reales vs Simulados)</div>
+                    <div class="card-subtitle">Las ciudades donde ingresan votos manuales REALES se marcan en color naranja pulsante diferente al tráfico simulado</div>
+                </div>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="btn btn-sm btn-primary" id="admMapBtnALL" onclick="filterAdminMap('ALL')">Todas</button>
+                    <button class="btn btn-sm btn-outline" id="admMapBtnCENTRO" onclick="filterAdminMap('CENTRO')">CENTRO</button>
+                    <button class="btn btn-sm btn-outline" id="admMapBtnNORTE" onclick="filterAdminMap('NORTE')">NORTE</button>
+                    <button class="btn btn-sm btn-outline" id="admMapBtnSUR" onclick="filterAdminMap('SUR')">SUR</button>
+                    <button class="btn btn-sm btn-outline" id="admMapBtnOESTE" onclick="filterAdminMap('OESTE')">OESTE</button>
+                    <button class="btn btn-sm btn-outline" id="admMapBtnESTE" onclick="filterAdminMap('ESTE')">ESTE</button>
+                </div>
+            </div>
+            <div class="map-legend">
+                <span><span class="legend-dot" style="background: #f97316; box-shadow: 0 0 8px #f97316;"></span><strong>Naranja pulsante:</strong> Ciudad con votos REALES ciudadanos</span>
+                <span><span class="legend-dot" style="background: #20B2A6;"></span><strong>Turquesa (#20B2A6):</strong> Ciudad con votos simulados</span>
+            </div>
+            <div id="adminColombiaMap" class="map-container" style="height: 360px;"></div>
+        </div>
+
+        <!-- Row 4: Balanced Results Tables (Nacional & Regional ONLY) -->
+        <div class="grid-equal" style="margin-bottom: 1.25rem;">
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Tabla 1: Elección Nacional 2026 (En Vivo)</div>
-                        <div class="card-subtitle">RabbitMQ Fanout Exchange (1s) — Reales vs Simulados</div>
+                        <div class="card-title"><span class="ms">how_to_vote</span>Tabla 1: Elección Nacional 2026 (En Vivo)</div>
+                        <div class="card-subtitle">RabbitMQ Fanout Exchange (1s) — 4 Candidatos Nacionales</div>
                     </div>
-                    <span class="badge badge-nac" id="nacTotalBadge">0 votos</span>
+                    <span class="badge badge-brand" id="nacTotalBadge">0 votos</span>
                 </div>
-                <div class="table-wrap">
+                <div class="table-wrap table-scroll-md">
                     <table>
                         <thead>
                             <tr>
@@ -150,14 +255,13 @@
                 </div>
             </div>
 
-            <!-- Tabla 2: Escrutinio Regional Ponderado -->
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Tabla 2: Elección Regional 2026 (Ponderada)</div>
-                        <div class="card-subtitle">RabbitMQ Topic Exchange (5s) + Patrón GoF Strategy</div>
+                        <div class="card-title"><span class="ms">map</span>Tabla 2: Elección Regional 2026 (Ponderada)</div>
+                        <div class="card-subtitle">Solo candidatos Regionales · RabbitMQ Topic (5s) + Strategy</div>
                     </div>
-                    <select id="regionFilterSelect" onchange="renderRegionalTable()" style="width: auto; padding: 0.35rem 0.65rem; font-size: 0.82rem;">
+                    <select id="regionFilterSelect" onchange="renderRegionalTable()" style="width: auto; padding: 0.36rem 0.65rem; font-size: 0.8rem;">
                         <option value="ALL">Todas las regiones</option>
                         <option value="CENTRO">CENTRO (x1.40)</option>
                         <option value="NORTE">NORTE (x1.25)</option>
@@ -166,12 +270,12 @@
                         <option value="ESTE">ESTE (x0.90)</option>
                     </select>
                 </div>
-                <div class="table-wrap">
+                <div class="table-wrap table-scroll-md">
                     <table>
                         <thead>
                             <tr>
                                 <th>Región</th>
-                                <th>Candidato</th>
+                                <th>Candidato Regional</th>
                                 <th>Reales</th>
                                 <th>Simulados</th>
                                 <th>Brutos</th>
@@ -184,14 +288,16 @@
             </div>
         </div>
 
-        <!-- Row 4: Master Audit Table (All Votes & Tickets from PostgreSQL) -->
+        <!-- Row 5: Master Audit Table (PostgreSQL) -->
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">Tabla 3: Registro Completo de Votaciones y Tickets (Auditoría PostgreSQL)</div>
-                    <div class="card-subtitle">Filtra y diferencia en tiempo real votos ciudadanos REALES frente a votos SIMULADOS</div>
+                    <div class="card-title"><span class="ms">receipt_long</span>Tabla 3: Registro Completo de Votaciones y Tickets (PostgreSQL)</div>
+                    <div class="card-subtitle">Filtra y diferencia votos ciudadanos REALES frente a votos SIMULADOS</div>
                 </div>
-                <button class="btn btn-outline btn-sm" onclick="refreshAuditVotes()">Actualizar Tabla</button>
+                <button class="btn btn-outline btn-sm" onclick="refreshAuditVotes()">
+                    <span class="ms ms-sm">refresh</span> Actualizar
+                </button>
             </div>
 
             <div class="toolbar">
@@ -216,7 +322,7 @@
                 <input type="text" id="filterSearch" placeholder="Buscar por cédula, ciudad o ticket..." oninput="debounceAuditSearch()" style="min-width: 240px;">
             </div>
 
-            <div class="table-wrap">
+            <div class="table-wrap table-scroll-md">
                 <table>
                     <thead>
                         <tr>
@@ -236,18 +342,17 @@
             </div>
         </div>
 
-        <!-- Row 5: Electoral Census (KTable) & Anti-Fraud Incidents (State Pattern) -->
+        <!-- Row 6: Electoral Census (KTable) & Anti-Fraud Incidents -->
         <div class="grid-equal">
-            <!-- Tabla 4: Padrón Electoral KTable -->
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Tabla 4: Padrón Electoral (Kafka KTable)</div>
-                        <div class="card-subtitle">Habilita o inhabilita cédulas propagando eventos a Kafka eligible_voters</div>
+                        <div class="card-title"><span class="ms">groups</span>Tabla 4: Padrón Electoral (Kafka KTable)</div>
+                        <div class="card-subtitle">Habilita o revoca cédulas replicando al topic eligible_voters</div>
                     </div>
                 </div>
 
-                <form onsubmit="addNewVoter(event)" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.5rem; margin-bottom: 1rem;">
+                <form onsubmit="addNewVoter(event)" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.45rem; margin-bottom: 0.85rem;">
                     <input type="text" id="newVoterCedula" placeholder="Cédula" required>
                     <input type="text" id="newVoterName" placeholder="Nombre" required>
                     <select id="newVoterCity">
@@ -261,7 +366,7 @@
                     <button type="submit" class="btn btn-primary btn-sm">Registrar</button>
                 </form>
 
-                <div class="table-wrap" style="max-height: 360px; overflow-y: auto;">
+                <div class="table-wrap table-scroll-md">
                     <table>
                         <thead>
                             <tr>
@@ -278,24 +383,25 @@
                 </div>
             </div>
 
-            <!-- Tabla 5: Incidentes Anti-Fraude -->
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Tabla 5: Alertas Anti-Fraude y Bloqueos Activos (Patrón State)</div>
-                        <div class="card-subtitle">Detecta ataques Bot, votos duplicados repetidos y suplantación (misma cédula con distinto nombre)</div>
+                        <div class="card-title"><span class="ms">shield</span>Tabla 5: Alertas Anti-Fraude y Bloqueos (Patrón State)</div>
+                        <div class="card-subtitle">Ataques Bot, duplicados repetidos y suplantación por nombre diferente</div>
                     </div>
-                    <button class="btn btn-outline btn-sm" onclick="refreshIncidents()">Refrescar</button>
+                    <button class="btn btn-outline btn-sm" onclick="refreshIncidents()">
+                        <span class="ms ms-sm">refresh</span> Refrescar
+                    </button>
                 </div>
 
-                <div id="blockedEntitiesBox" style="margin-bottom: 0.9rem;"></div>
+                <div id="blockedEntitiesBox" style="margin-bottom: 0.85rem;"></div>
 
-                <div class="table-wrap" style="max-height: 360px; overflow-y: auto;">
+                <div class="table-wrap table-scroll-md">
                     <table>
                         <thead>
                             <tr>
                                 <th>IP Origen</th>
-                                <th>Nivel Riesgo</th>
+                                <th>Nivel</th>
                                 <th>Intentos</th>
                                 <th>Detalle</th>
                                 <th>Hora</th>
@@ -306,53 +412,10 @@
                 </div>
             </div>
         </div>
-
-        <!-- Row 6: Telegram Bot API Integration -->
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">Integración API Bot de Telegram (Notificaciones y Comandos en Vivo)</div>
-                    <div class="card-subtitle">Conecta tu bot creado en @BotFather para recibir alertas de votos reales, intentos de suplantación/fraude y consultar resultados por comando</div>
-                </div>
-                <span class="badge badge-neutral" id="tgStatusBadge">NO CONFIGURADO</span>
-            </div>
-
-            <form onsubmit="saveTelegramConfig(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; align-items: end;">
-                <div>
-                    <label for="tgBotToken">Bot Token (de @BotFather)</label>
-                    <input type="text" id="tgBotToken" placeholder="Ej: 7123456789:AAH...">
-                </div>
-                <div>
-                    <label for="tgChatId">Chat ID (tu usuario o grupo)</label>
-                    <input type="text" id="tgChatId" placeholder="Ej: 123456789 o -100123456">
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.82rem;">
-                    <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600;">
-                        <input type="checkbox" id="tgEnabled" style="width: auto;"> Activar envío automático a Telegram
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600;">
-                        <input type="checkbox" id="tgNotifyVotes" checked style="width: auto;"> Notificar votos REALES
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-weight: 600;">
-                        <input type="checkbox" id="tgNotifyFraud" checked style="width: auto;"> Notificar alertas Anti-Fraude / Suplantación
-                    </label>
-                </div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button type="submit" class="btn btn-primary btn-sm">Guardar Config</button>
-                    <button type="button" class="btn btn-success btn-sm" onclick="testTelegram()">Probar Conexión</button>
-                    <button type="button" class="btn btn-outline btn-sm" onclick="sendTelegramSummary()">Enviar Resumen Ahora</button>
-                </div>
-            </form>
-
-            <div id="tgFeedback" style="font-size: 0.82rem; color: var(--ink-muted); margin-top: 0.75rem;"></div>
-            <div style="margin-top: 0.75rem; padding: 0.75rem 0.9rem; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 10px; font-size: 0.8rem; color: var(--ink-muted);">
-                <strong>Endpoint Webhook listo para Bot de Telegram:</strong>
-                <code class="mono" id="tgWebhookUrl">/api/telegram/webhook</code>
-                — Comandos soportados: <code>/resultados</code>, <code>/segundavuelta</code>, <code>/ticket &lt;cedula&gt;</code>.
-            </div>
-        </div>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/colombia-map.js"></script>
     <script src="/admin.js"></script>
 </body>
 </html>

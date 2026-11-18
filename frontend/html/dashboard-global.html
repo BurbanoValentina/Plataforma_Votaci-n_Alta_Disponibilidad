@@ -9,19 +9,21 @@
 <body>
     <nav class="topbar">
         <div class="topbar-inner">
-            <a class="brand" href="/">
-                <div class="brand-seal">N</div>
+            <!-- Logo personalizado: acceso oculto al Panel de Administración -->
+            <a class="brand" href="/admin.html" title="Consejo Electoral Digital">
+                <div class="brand-logo-wrap">
+                    <img src="/assets/logo.png" alt="Logo Electoral">
+                </div>
                 <div>
-                    <div class="brand-title">Tablero Nacional en Tiempo Real</div>
+                    <div class="brand-title">Resultados Nacionales en Vivo</div>
                     <div class="brand-sub">Kafka Stateful Aggregation + RabbitMQ Fanout Exchange (1s)</div>
                 </div>
             </a>
             <div class="nav-links">
-                <a class="nav-link" href="/">Cabina de Votación</a>
-                <a class="nav-link" href="/admin.html">Panel de Administración</a>
-                <a class="nav-link" href="/prediccion.html">Segunda Vuelta</a>
-                <a class="nav-link active" href="/dashboard-global.html">Resultados Nacionales</a>
-                <a class="nav-link" href="/dashboard-regional.html">Resultados Regionales</a>
+                <a class="nav-link" href="/"><span class="ms ms-sm">how_to_vote</span>Cabina de Votación</a>
+                <a class="nav-link" href="/prediccion.html"><span class="ms ms-sm">leaderboard</span>Segunda Vuelta</a>
+                <a class="nav-link active" href="/dashboard-global.html"><span class="ms ms-sm">public</span>Resultados Nacionales</a>
+                <a class="nav-link" href="/dashboard-regional.html"><span class="ms ms-sm">map</span>Resultados Regionales</a>
                 <span class="node-pill"><span class="pulse-dot"></span><span id="statusText">En Vivo (1s)</span></span>
             </div>
         </div>
@@ -29,18 +31,18 @@
 
     <main class="container">
         <section class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Total Votos Nacionales</div>
+            <div class="kpi-card brand">
+                <div class="kpi-label"><span class="ms ms-sm">public</span>Total Votos Nacionales</div>
                 <div class="kpi-value" id="totalNac">0</div>
                 <div class="kpi-meta">Consolidado Fanout Exchange</div>
             </div>
             <div class="kpi-card real">
-                <div class="kpi-label" style="color: #047857;">Votos Reales (Ciudadanos)</div>
-                <div class="kpi-value" style="color: #065f46;" id="totalReal">0</div>
+                <div class="kpi-label" style="color: #c2410c;"><span class="ms ms-sm">person_check</span>Votos Reales (Ciudadanos)</div>
+                <div class="kpi-value" style="color: #9a3412;" id="totalReal">0</div>
                 <div class="kpi-meta">Verificados con cédula y ticket</div>
             </div>
             <div class="kpi-card sim">
-                <div class="kpi-label" style="color: #3730a3;">Votos Simulados (En Vivo)</div>
+                <div class="kpi-label" style="color: #3730a3;"><span class="ms ms-sm">bolt</span>Votos Simulados (En Vivo)</div>
                 <div class="kpi-value" style="color: #312e81;" id="totalSim">0</div>
                 <div class="kpi-meta">Flujo continuo de estrés</div>
             </div>
@@ -49,8 +51,8 @@
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">Resultados por Candidato — Elección Nacional 2026</div>
-                    <div class="card-subtitle">Verde: Votos Reales · Índigo: Votos Simulados</div>
+                    <div class="card-title"><span class="ms">how_to_vote</span>Resultados por Candidato — Elección Nacional 2026</div>
+                    <div class="card-subtitle">Naranja: Votos Reales · Turquesa: Votos Simulados</div>
                 </div>
                 <span class="badge badge-neutral" id="updatedAt">Esperando transmisión...</span>
             </div>
@@ -61,8 +63,7 @@
     <script>
         let candidates = [];
         async function boot() {
-            const catRes = await fetch('/api/catalog');
-            const cat = await catRes.json();
+            const cat = await (await fetch('/api/catalog')).json();
             candidates = cat.nationalCandidates || [];
             const res = await fetch('/api/results/global');
             if (res.ok) render(await res.json());
@@ -96,19 +97,23 @@
                 const rPct = nacTotal > 0 ? (r / nacTotal) * 100 : 0;
                 const sPct = nacTotal > 0 ? (s / nacTotal) * 100 : 0;
                 return `
-                    <div style="margin-bottom: 1.25rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
-                            <div>
-                                <strong style="font-size: 1.05rem;">#${c.ballotNumber} ${c.name}</strong>
-                                <span style="font-size: 0.82rem; color: var(--ink-soft); margin-left: 0.5rem;">${c.party}</span>
+                    <div style="margin-bottom: 1.25rem; padding: 0.9rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.55rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <img class="candidate-avatar" style="width: 48px; height: 48px;" src="${c.photoUrl || ''}" alt="${c.name}"
+                                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=20B2A6&color=fff'">
+                                <div>
+                                    <strong style="font-size: 1.02rem;">#${c.ballotNumber} ${c.name}</strong>
+                                    <div style="font-size: 0.8rem; color: var(--ink-soft);">${c.party}</div>
+                                </div>
                             </div>
-                            <div style="font-size: 0.9rem;">
+                            <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
                                 <span class="badge badge-real">${r.toLocaleString('es-CO')} Reales</span>
-                                <span class="badge badge-sim">${s.toLocaleString('es-CO')} Simulados</span>
-                                <strong style="margin-left: 0.4rem;">${t.toLocaleString('es-CO')} (${pct}%)</strong>
+                                <span class="badge badge-brand">${s.toLocaleString('es-CO')} Simulados</span>
+                                <strong style="font-size: 1rem;">${t.toLocaleString('es-CO')} (${pct}%)</strong>
                             </div>
                         </div>
-                        <div class="stacked-bar" style="height: 20px;">
+                        <div class="stacked-bar" style="height: 16px;">
                             <div class="bar-real" style="width: ${rPct}%"></div>
                             <div class="bar-sim" style="width: ${sPct}%"></div>
                         </div>

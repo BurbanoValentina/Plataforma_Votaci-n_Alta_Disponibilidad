@@ -58,8 +58,14 @@ function renderSection(prefix, pred) {
         <tr>
             <td><strong>#${idx + 1}</strong></td>
             <td>
-                <strong>${escapeHtml(c.name)}</strong>
-                <div style="font-size: 0.75rem; color: var(--ink-soft);">${escapeHtml(c.party)}</div>
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <img class="candidate-avatar-sm" src="${escapeHtml(c.photoUrl || '')}" alt="${escapeHtml(c.name)}"
+                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=20B2A6&color=fff'">
+                    <div>
+                        <strong>${escapeHtml(c.name)}</strong>
+                        <div style="font-size: 0.74rem; color: var(--ink-soft);">${escapeHtml(c.party)}</div>
+                    </div>
+                </div>
             </td>
             <td><span class="badge badge-real">${Number(c.realVotes).toLocaleString('es-CO')}</span></td>
             <td><span class="badge badge-sim">${Number(c.simulatedVotes).toLocaleString('es-CO')}</span></td>
@@ -81,40 +87,32 @@ function renderFinalistCard(f, rank, runoffRequired) {
         : 'FINALISTA #2 (RETADOR)';
     return `
         <div class="finalist-card rank-${rank}">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
-                <span class="badge ${rank === 1 ? 'badge-nac' : 'badge-ok'}">${label}</span>
-                <span class="ballot-num" style="background: ${f.accentColor}; margin: 0;">#${f.ballotNumber}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <span class="badge ${rank === 1 ? 'badge-brand' : 'badge-real'}">${label}</span>
+                <span class="ballot-num" style="background: ${f.accentColor};">Tarjetón #${f.ballotNumber}</span>
             </div>
-            <div style="font-size: 1.35rem; font-weight: 800; color: var(--ink);">${escapeHtml(f.name)}</div>
-            <div style="font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 1rem;">${escapeHtml(f.party)}</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                <div style="background: rgba(255,255,255,0.8); padding: 0.65rem; border-radius: 10px; border: 1px solid var(--border);">
-                    <div class="ticket-field-label">Votación Actual</div>
-                    <div style="font-size: 1.35rem; font-weight: 800;">${f.currentSharePct}%</div>
-                    <div style="font-size: 0.76rem; color: var(--ink-soft);">${Number(f.votes).toLocaleString('es-CO')} votos (${f.realVotes}R / ${f.simulatedVotes}S)</div>
+            <div style="display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1rem;">
+                <img class="candidate-avatar-lg" src="${escapeHtml(f.photoUrl || '')}" alt="${escapeHtml(f.name)}"
+                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}&background=20B2A6&color=fff&bold=true'">
+                <div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: var(--ink);">${escapeHtml(f.name)}</div>
+                    <div style="font-size: 0.84rem; color: var(--ink-soft);">${escapeHtml(f.party)}</div>
                 </div>
-                <div style="background: rgba(255,255,255,0.8); padding: 0.65rem; border-radius: 10px; border: 1px solid var(--border);">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem;">
+                <div style="background: rgba(255,255,255,0.85); padding: 0.65rem; border-radius: 10px; border: 1px solid var(--border);">
+                    <div class="ticket-field-label">Votación Actual</div>
+                    <div style="font-size: 1.32rem; font-weight: 800;">${f.currentSharePct}%</div>
+                    <div style="font-size: 0.74rem; color: var(--ink-soft);">${Number(f.votes).toLocaleString('es-CO')} votos (${f.realVotes}R / ${f.simulatedVotes}S)</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.85); padding: 0.65rem; border-radius: 10px; border: 1px solid var(--border);">
                     <div class="ticket-field-label">Proyección Cara a Cara</div>
-                    <div style="font-size: 1.35rem; font-weight: 800; color: ${rank === 1 ? '#1d4ed8' : '#059669'};">${f.projectedRunoffSharePct}%</div>
-                    <div style="font-size: 0.76rem; color: var(--ink-soft);">Prob. victoria: <strong>${f.winProbabilityPct}%</strong></div>
+                    <div style="font-size: 1.32rem; font-weight: 800; color: ${rank === 1 ? '#0f6b63' : '#c2410c'};">${f.projectedRunoffSharePct}%</div>
+                    <div style="font-size: 0.74rem; color: var(--ink-soft);">Prob. victoria: <strong>${f.winProbabilityPct}%</strong></div>
                 </div>
             </div>
         </div>
     `;
-}
-
-async function sendPredictionToTelegram() {
-    const el = document.getElementById('tgPredMsg');
-    el.textContent = 'Enviando reporte a Telegram...';
-    try {
-        const res = await fetch('/api/telegram/send-summary', { method: 'POST' });
-        const data = await res.json();
-        el.textContent = data.ok
-            ? '✔ Predicción enviada exitosamente a tu chat de Telegram.'
-            : '⚠ ' + (data.error || 'Configura primero tu Bot Token y Chat ID en el Panel de Administración.');
-    } catch (err) {
-        el.textContent = 'Error enviando a Telegram: ' + err.message;
-    }
 }
 
 function escapeHtml(str) {
