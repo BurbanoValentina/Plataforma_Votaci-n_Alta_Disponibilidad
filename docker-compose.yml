@@ -6,7 +6,9 @@
 # ============================================================================
 
 networks:
-  voting-private-net:
+  app-net:
+    driver: bridge
+  data-net:
     driver: bridge
 
 volumes:
@@ -27,7 +29,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - voting-private-net
+      - data-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-voting_user} -d ${DB_NAME:-voting_db}"]
       interval: 10s
@@ -49,7 +51,7 @@ services:
     volumes:
       - kafkadata:/var/lib/kafka/data
     networks:
-      - voting-private-net
+      - data-net
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
@@ -91,7 +93,7 @@ services:
       - ./infrastructure/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./infrastructure/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     networks:
-      - voting-private-net
+      - data-net
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -120,7 +122,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - voting-private-net
+      - app-net
+      - data-net
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       RABBITMQ_HOST: rabbitmq
@@ -152,7 +155,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - voting-private-net
+      - app-net
+      - data-net
     environment:
       NODE_ID: local-edge-node-1
       AVAILABILITY_ZONE: local-az-a
@@ -186,7 +190,8 @@ services:
       rabbitmq:
         condition: service_healthy
     networks:
-      - voting-private-net
+      - app-net
+      - data-net
     environment:
       NODE_ID: local-edge-node-2
       AVAILABILITY_ZONE: local-az-b
@@ -218,7 +223,7 @@ services:
     ports:
       - "${FRONTEND_PORT:-80}:80"
     networks:
-      - voting-private-net
+      - app-net
     deploy:
       resources:
         limits:

@@ -42,3 +42,14 @@ Thumbs.db
 
 ### Firebase CLI cache ###
 .firebase/
+
+### Agent & AI Skill Caches (No subir al repositorio) ###
+.agents/
+.claude/
+skills-lock.json
+.github/modernize/
+*.pdf
+
+### Documentation & Reports ###
+docs/
+INFORME_PROYECTO_AWS.*
