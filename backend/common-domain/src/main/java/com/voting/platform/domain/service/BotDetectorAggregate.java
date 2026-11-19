@@ -1,4 +1,4 @@
-package com.voting.platform.domain.aggregate;
+package com.voting.platform.domain.service;
 
 import com.voting.platform.domain.model.IpAddress;
 import com.voting.platform.domain.model.SecurityAlertRecord;
@@ -79,3 +79,4 @@ public class BotDetectorAggregate {
         return ipTrackers.size();
     }
 }
+

@@ -1,9 +1,9 @@
-package com.voting.platform.domain.aggregate;
+package com.voting.platform.domain.service;
 
 import com.voting.platform.domain.model.CandidateId;
 import com.voting.platform.domain.model.ElectionType;
 import com.voting.platform.domain.model.Region;
-import com.voting.platform.domain.model.RegionalResultRecord;
+import com.voting.platform.domain.dto.response.RegionalResultRecord;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoteSource;
 import com.voting.platform.domain.model.VoterId;
@@ -153,3 +153,4 @@ public class RegionalVoteCounterAggregate {
         }
     }
 }
+

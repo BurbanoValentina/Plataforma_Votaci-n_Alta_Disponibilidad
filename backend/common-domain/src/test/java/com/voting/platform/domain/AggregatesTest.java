@@ -1,13 +1,13 @@
 package com.voting.platform.domain;
 
-import com.voting.platform.domain.aggregate.BotDetectorAggregate;
-import com.voting.platform.domain.aggregate.RegionalVoteCounterAggregate;
-import com.voting.platform.domain.aggregate.VoteCounterAggregate;
+import com.voting.platform.domain.service.BotDetectorAggregate;
+import com.voting.platform.domain.service.RegionalVoteCounterAggregate;
+import com.voting.platform.domain.service.VoteCounterAggregate;
 import com.voting.platform.domain.model.CandidateId;
-import com.voting.platform.domain.model.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
 import com.voting.platform.domain.model.IpAddress;
 import com.voting.platform.domain.model.Region;
-import com.voting.platform.domain.model.RegionalResultRecord;
+import com.voting.platform.domain.dto.response.RegionalResultRecord;
 import com.voting.platform.domain.model.SecurityAlertRecord;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoterId;
@@ -198,3 +198,4 @@ class AggregatesTest {
         }
     }
 }
+

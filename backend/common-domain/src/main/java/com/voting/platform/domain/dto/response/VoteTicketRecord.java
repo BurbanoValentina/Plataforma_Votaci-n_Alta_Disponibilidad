@@ -1,4 +1,10 @@
-package com.voting.platform.domain.model;
+package com.voting.platform.domain.dto.response;
+
+import com.voting.platform.domain.model.CandidateCatalog;
+import com.voting.platform.domain.model.ElectionType;
+import com.voting.platform.domain.model.Region;
+import com.voting.platform.domain.model.VoteSource;
+import com.voting.platform.domain.model.VoteTicketCode;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -40,3 +46,4 @@ public record VoteTicketRecord(
         }
     }
 }
+

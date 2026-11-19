@@ -1,4 +1,4 @@
-package com.voting.platform.domain.model;
+package com.voting.platform.domain.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -50,3 +50,4 @@ public record VoteRequestRecord(
         this(voterId, "Ciudadano Verificado", candidateId, "Bogotá", region, "NACIONAL", clientIp, "REAL");
     }
 }
+

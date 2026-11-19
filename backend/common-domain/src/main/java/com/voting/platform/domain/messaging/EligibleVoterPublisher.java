@@ -1,4 +1,4 @@
-package com.voting.platform.domain.port;
+package com.voting.platform.domain.messaging;
 
 import com.voting.platform.domain.model.EligibleVoterRecord;
 
@@ -8,3 +8,4 @@ import com.voting.platform.domain.model.EligibleVoterRecord;
 public interface EligibleVoterPublisher {
     void publishEligibleVoter(EligibleVoterRecord eligibleVoter);
 }
+

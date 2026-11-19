@@ -1,4 +1,4 @@
-package com.voting.platform.domain.port;
+package com.voting.platform.domain.repository;
 
 /**
  * Outbound Port (DIP) for reading and updating shared electoral lifecycle state
@@ -14,3 +14,4 @@ public interface ElectionStateRepositoryPort {
 
     void setStrictCensusMode(boolean strict);
 }
+

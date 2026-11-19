@@ -1,4 +1,4 @@
-package com.voting.platform.domain.port;
+package com.voting.platform.domain.repository;
 
 import com.voting.platform.domain.model.VoteRecord;
 
@@ -9,3 +9,4 @@ public interface VoteAuditRepositoryPort {
     void saveAudit(VoteRecord vote);
     long count();
 }
+

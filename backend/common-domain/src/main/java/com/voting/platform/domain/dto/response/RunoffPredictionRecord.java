@@ -1,4 +1,6 @@
-package com.voting.platform.domain.model;
+package com.voting.platform.domain.dto.response;
+
+import com.voting.platform.domain.model.ElectionType;
 
 import java.time.Instant;
 import java.util.List;
@@ -44,3 +46,4 @@ public record RunoffPredictionRecord(
         if (generatedAt == null) generatedAt = Instant.now();
     }
 }
+

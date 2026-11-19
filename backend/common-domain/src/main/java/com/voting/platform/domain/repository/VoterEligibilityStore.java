@@ -1,4 +1,4 @@
-package com.voting.platform.domain.port;
+package com.voting.platform.domain.repository;
 
 import com.voting.platform.domain.model.EligibleVoterRecord;
 import com.voting.platform.domain.model.VoterId;
@@ -13,3 +13,4 @@ public interface VoterEligibilityStore {
     int size();
     void clear();
 }
+

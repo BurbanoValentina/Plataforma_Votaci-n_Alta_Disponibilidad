@@ -1,4 +1,4 @@
-package com.voting.platform.domain.port;
+package com.voting.platform.domain.messaging;
 
 import com.voting.platform.domain.model.SecurityAlertRecord;
 
@@ -8,3 +8,4 @@ import com.voting.platform.domain.model.SecurityAlertRecord;
 public interface SecurityAlertPublisher {
     void publishSecurityAlert(SecurityAlertRecord alert);
 }
+

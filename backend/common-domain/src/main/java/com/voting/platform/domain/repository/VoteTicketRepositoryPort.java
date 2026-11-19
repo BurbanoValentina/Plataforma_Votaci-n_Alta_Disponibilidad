@@ -1,10 +1,11 @@
-package com.voting.platform.domain.port;
+package com.voting.platform.domain.repository;
 
 import com.voting.platform.domain.model.ElectionType;
-import com.voting.platform.domain.model.VoteTicketRecord;
+import com.voting.platform.domain.dto.response.VoteTicketRecord;
 import com.voting.platform.domain.model.VoterId;
 
 import java.util.List;
+import com.voting.platform.domain.dto.response.VoteTicketRecord;
 import java.util.Optional;
 
 /**
@@ -26,3 +27,4 @@ public interface VoteTicketRepositoryPort {
 
     List<VoteTicketRecord> findRecent(int limit);
 }
+

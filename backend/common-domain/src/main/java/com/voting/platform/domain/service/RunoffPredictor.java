@@ -1,10 +1,10 @@
-package com.voting.platform.domain.aggregate;
+package com.voting.platform.domain.service;
 
 import com.voting.platform.domain.model.CandidateCatalog;
 import com.voting.platform.domain.model.ElectionType;
-import com.voting.platform.domain.model.GlobalResultRecord;
-import com.voting.platform.domain.model.RunoffPredictionRecord;
-import com.voting.platform.domain.model.RunoffPredictionRecord.CandidateProjection;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.RunoffPredictionRecord;
+import com.voting.platform.domain.dto.response.RunoffPredictionRecord.CandidateProjection;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -166,3 +166,4 @@ public final class RunoffPredictor {
         return Math.round(val * 100.0) / 100.0;
     }
 }
+

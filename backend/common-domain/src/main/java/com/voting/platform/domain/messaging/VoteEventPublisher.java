@@ -1,4 +1,4 @@
-package com.voting.platform.domain.port;
+package com.voting.platform.domain.messaging;
 
 import com.voting.platform.domain.model.VoteRecord;
 
@@ -8,3 +8,4 @@ import com.voting.platform.domain.model.VoteRecord;
 public interface VoteEventPublisher {
     void publishRawVote(VoteRecord vote);
 }
+

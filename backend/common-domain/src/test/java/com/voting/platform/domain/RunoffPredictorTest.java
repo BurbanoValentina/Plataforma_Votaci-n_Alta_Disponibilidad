@@ -1,9 +1,9 @@
 package com.voting.platform.domain;
 
-import com.voting.platform.domain.aggregate.RunoffPredictor;
+import com.voting.platform.domain.service.RunoffPredictor;
 import com.voting.platform.domain.model.ElectionType;
-import com.voting.platform.domain.model.GlobalResultRecord;
-import com.voting.platform.domain.model.RunoffPredictionRecord;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.RunoffPredictionRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -45,3 +45,4 @@ class RunoffPredictorTest {
         assertThat(realPred.finalists().get(0).candidateId()).isEqualTo("cand_nac_02");
     }
 }
+

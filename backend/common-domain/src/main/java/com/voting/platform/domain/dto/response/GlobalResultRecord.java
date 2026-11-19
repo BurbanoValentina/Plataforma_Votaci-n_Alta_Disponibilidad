@@ -1,4 +1,4 @@
-package com.voting.platform.domain.model;
+package com.voting.platform.domain.dto.response;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -77,3 +77,4 @@ public record GlobalResultRecord(
         );
     }
 }
+

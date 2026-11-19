@@ -1,4 +1,6 @@
-package com.voting.platform.domain.model;
+package com.voting.platform.domain.dto.response;
+
+import com.voting.platform.domain.model.Region;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -47,3 +49,4 @@ public record RegionalResultRecord(
         this(region, weightedVotes, rawVotes, rawVotes, Map.of(), totalRegionalVotes, totalRegionalVotes, 0L, 1.0, generatedAt);
     }
 }
+

@@ -94,3 +94,4 @@ class StrategyPatternTest {
             .isInstanceOf(NullPointerException.class);
     }
 }
+

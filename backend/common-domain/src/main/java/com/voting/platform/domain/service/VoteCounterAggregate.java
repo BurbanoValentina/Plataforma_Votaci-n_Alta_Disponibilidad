@@ -1,8 +1,8 @@
-package com.voting.platform.domain.aggregate;
+package com.voting.platform.domain.service;
 
 import com.voting.platform.domain.model.CandidateId;
 import com.voting.platform.domain.model.ElectionType;
-import com.voting.platform.domain.model.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoteSource;
 import com.voting.platform.domain.model.VoterId;
@@ -206,3 +206,4 @@ public class VoteCounterAggregate {
         regionalSimulatedTallies.clear();
     }
 }
+
