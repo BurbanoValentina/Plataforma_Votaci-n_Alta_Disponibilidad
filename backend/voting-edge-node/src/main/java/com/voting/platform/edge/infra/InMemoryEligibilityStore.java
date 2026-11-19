@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.voting.platform.domain.model.EligibleVoterRecord;
 import com.voting.platform.domain.model.Region;
 import com.voting.platform.domain.model.VoterId;
-import com.voting.platform.domain.port.VoterEligibilityStore;
+import com.voting.platform.domain.repository.VoterEligibilityStore;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,7 +1,7 @@
 package com.voting.platform.edge.mapper;
 
 import com.voting.platform.domain.exception.DuplicateVoteException;
-import com.voting.platform.domain.model.VoteTicketRecord;
+import com.voting.platform.domain.dto.response.VoteTicketRecord;
 import com.voting.platform.edge.dto.response.ConsultaTicketsResponse;
 import com.voting.platform.edge.dto.response.VotoAceptadoResponse;
 import com.voting.platform.edge.dto.response.VotoDuplicadoResponse;

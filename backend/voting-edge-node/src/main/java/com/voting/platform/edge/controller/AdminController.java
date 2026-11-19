@@ -9,7 +9,7 @@ import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoteSource;
 import com.voting.platform.domain.model.VoteTicketCode;
 import com.voting.platform.domain.model.VoterId;
-import com.voting.platform.domain.port.NotificationPort;
+import com.voting.platform.domain.messaging.NotificationPort;
 import com.voting.platform.edge.infra.InMemoryEligibilityStore;
 import com.voting.platform.edge.messaging.KafkaEdgeClient;
 import com.voting.platform.edge.repository.PostgresEdgeRepository;

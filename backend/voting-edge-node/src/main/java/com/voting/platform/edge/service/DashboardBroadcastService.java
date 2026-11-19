@@ -1,8 +1,8 @@
 package com.voting.platform.edge.service;
 
-import com.voting.platform.domain.model.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
 import com.voting.platform.domain.model.Region;
-import com.voting.platform.domain.model.RegionalResultRecord;
+import com.voting.platform.domain.dto.response.RegionalResultRecord;
 import com.voting.platform.edge.repository.PostgresEdgeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;

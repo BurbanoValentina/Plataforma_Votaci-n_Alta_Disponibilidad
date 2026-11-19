@@ -1,17 +1,17 @@
 package com.voting.platform.edge.repository;
 
 import com.voting.platform.domain.model.ElectionType;
-import com.voting.platform.domain.model.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
 import com.voting.platform.domain.model.IpAddress;
 import com.voting.platform.domain.model.Region;
-import com.voting.platform.domain.model.RegionalResultRecord;
+import com.voting.platform.domain.dto.response.RegionalResultRecord;
 import com.voting.platform.domain.model.SecurityAlertRecord;
 import com.voting.platform.domain.model.VoteSource;
-import com.voting.platform.domain.model.VoteTicketRecord;
+import com.voting.platform.domain.dto.response.VoteTicketRecord;
 import com.voting.platform.domain.model.VoterId;
-import com.voting.platform.domain.port.ElectionStateRepositoryPort;
-import com.voting.platform.domain.port.FraudGuardPort;
-import com.voting.platform.domain.port.VoteTicketRepositoryPort;
+import com.voting.platform.domain.repository.ElectionStateRepositoryPort;
+import com.voting.platform.domain.repository.FraudGuardPort;
+import com.voting.platform.domain.repository.VoteTicketRepositoryPort;
 import com.voting.platform.domain.strategy.ElectoralWeightingStrategy;
 import com.voting.platform.domain.strategy.RegionalStrategyContext;
 import jakarta.annotation.PostConstruct;

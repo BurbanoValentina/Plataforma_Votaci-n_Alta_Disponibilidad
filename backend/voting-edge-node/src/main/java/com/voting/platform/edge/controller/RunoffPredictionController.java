@@ -1,9 +1,9 @@
 package com.voting.platform.edge.controller;
 
-import com.voting.platform.domain.aggregate.RunoffPredictor;
+import com.voting.platform.domain.service.RunoffPredictor;
 import com.voting.platform.domain.model.ElectionType;
-import com.voting.platform.domain.model.GlobalResultRecord;
-import com.voting.platform.domain.model.RunoffPredictionRecord;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.RunoffPredictionRecord;
 import com.voting.platform.edge.service.DashboardBroadcastService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;

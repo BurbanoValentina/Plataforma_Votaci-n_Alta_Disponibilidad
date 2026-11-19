@@ -1,7 +1,7 @@
 package com.voting.platform.edge.controller;
 
-import com.voting.platform.domain.model.GlobalResultRecord;
-import com.voting.platform.domain.model.RegionalResultRecord;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
+import com.voting.platform.domain.dto.response.RegionalResultRecord;
 import com.voting.platform.edge.service.DashboardBroadcastService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;

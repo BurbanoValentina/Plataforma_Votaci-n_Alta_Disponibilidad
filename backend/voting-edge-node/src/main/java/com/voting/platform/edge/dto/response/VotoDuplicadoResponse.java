@@ -1,6 +1,6 @@
 package com.voting.platform.edge.dto.response;
 
-import com.voting.platform.domain.model.VoteTicketRecord;
+import com.voting.platform.domain.dto.response.VoteTicketRecord;
 
 import java.io.Serializable;
 
