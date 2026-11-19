@@ -1,7 +1,7 @@
 package com.voting.platform.stream.service;
 
 import com.voting.platform.domain.model.VoteRecord;
-import com.voting.platform.domain.port.VoteAuditRepositoryPort;
+import com.voting.platform.domain.repository.VoteAuditRepositoryPort;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;

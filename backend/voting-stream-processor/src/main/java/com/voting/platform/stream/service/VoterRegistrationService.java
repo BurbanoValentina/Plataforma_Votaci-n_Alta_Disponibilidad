@@ -1,7 +1,7 @@
 package com.voting.platform.stream.service;
 
 import com.voting.platform.domain.model.EligibleVoterRecord;
-import com.voting.platform.domain.port.EligibleVoterPublisher;
+import com.voting.platform.domain.messaging.EligibleVoterPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

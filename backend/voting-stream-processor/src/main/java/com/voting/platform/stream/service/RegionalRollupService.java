@@ -1,11 +1,11 @@
 package com.voting.platform.stream.service;
 
-import com.voting.platform.domain.aggregate.RegionalVoteCounterAggregate;
+import com.voting.platform.domain.service.RegionalVoteCounterAggregate;
 import com.voting.platform.domain.model.ElectionType;
 import com.voting.platform.domain.model.Region;
-import com.voting.platform.domain.model.RegionalResultRecord;
+import com.voting.platform.domain.dto.response.RegionalResultRecord;
 import com.voting.platform.domain.model.VoteRecord;
-import com.voting.platform.domain.port.RegionalResultPublisher;
+import com.voting.platform.domain.messaging.RegionalResultPublisher;
 import com.voting.platform.domain.strategy.ElectoralWeightingStrategy;
 import com.voting.platform.domain.strategy.RegionalStrategyContext;
 import com.voting.platform.domain.strategy.RegionalWeightingStrategy;

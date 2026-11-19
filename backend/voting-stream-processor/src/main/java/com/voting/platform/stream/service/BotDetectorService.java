@@ -1,10 +1,10 @@
 package com.voting.platform.stream.service;
 
-import com.voting.platform.domain.aggregate.BotDetectorAggregate;
+import com.voting.platform.domain.service.BotDetectorAggregate;
 import com.voting.platform.domain.model.SecurityAlertRecord;
 import com.voting.platform.domain.model.VoteRecord;
-import com.voting.platform.domain.port.SecurityAlertPublisher;
-import com.voting.platform.domain.port.SecurityIncidentRepositoryPort;
+import com.voting.platform.domain.messaging.SecurityAlertPublisher;
+import com.voting.platform.domain.repository.SecurityIncidentRepositoryPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

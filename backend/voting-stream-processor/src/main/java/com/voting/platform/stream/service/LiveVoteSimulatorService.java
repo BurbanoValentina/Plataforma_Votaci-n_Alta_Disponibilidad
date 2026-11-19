@@ -6,7 +6,7 @@ import com.voting.platform.domain.model.ElectionType;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoteSource;
 import com.voting.platform.domain.model.VoteTicketCode;
-import com.voting.platform.domain.port.VoteEventPublisher;
+import com.voting.platform.domain.messaging.VoteEventPublisher;
 import com.voting.platform.stream.repository.PostgresStreamRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

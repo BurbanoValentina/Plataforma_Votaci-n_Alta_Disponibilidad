@@ -1,9 +1,9 @@
 package com.voting.platform.stream.service;
 
-import com.voting.platform.domain.aggregate.VoteCounterAggregate;
-import com.voting.platform.domain.model.GlobalResultRecord;
+import com.voting.platform.domain.service.VoteCounterAggregate;
+import com.voting.platform.domain.dto.response.GlobalResultRecord;
 import com.voting.platform.domain.model.VoteRecord;
-import com.voting.platform.domain.port.GlobalResultPublisher;
+import com.voting.platform.domain.messaging.GlobalResultPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
