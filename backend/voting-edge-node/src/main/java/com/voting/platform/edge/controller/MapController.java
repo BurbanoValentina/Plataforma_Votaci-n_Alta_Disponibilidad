@@ -2,7 +2,7 @@ package com.voting.platform.edge.controller;
 
 import com.voting.platform.domain.model.City;
 import com.voting.platform.domain.model.Region;
-import com.voting.platform.edge.infra.PostgresEdgeRepository;
+import com.voting.platform.edge.repository.PostgresEdgeRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

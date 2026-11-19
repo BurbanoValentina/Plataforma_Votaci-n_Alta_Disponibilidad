@@ -31,6 +31,8 @@ import com.voting.platform.domain.state.lifecycle.HabilitadoState;
 import com.voting.platform.domain.state.lifecycle.VotingLifecycleState;
 import com.voting.platform.domain.state.lifecycle.VotingSession;
 import com.voting.platform.edge.infra.InMemoryEligibilityStore;
+import com.voting.platform.edge.messaging.KafkaEdgeClient;
+import com.voting.platform.edge.repository.PostgresEdgeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

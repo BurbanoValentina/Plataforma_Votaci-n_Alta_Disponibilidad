@@ -1,4 +1,4 @@
-package com.voting.platform.edge.infra;
+package com.voting.platform.edge.messaging;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +10,7 @@ import com.voting.platform.domain.model.VoterId;
 import com.voting.platform.domain.port.EligibleVoterPublisher;
 import com.voting.platform.domain.port.SecurityAlertPublisher;
 import com.voting.platform.domain.port.VoteEventPublisher;
+import com.voting.platform.edge.infra.InMemoryEligibilityStore;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.apache.kafka.clients.consumer.ConsumerConfig;

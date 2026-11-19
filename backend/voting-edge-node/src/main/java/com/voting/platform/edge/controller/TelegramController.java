@@ -1,6 +1,6 @@
 package com.voting.platform.edge.controller;
 
-import com.voting.platform.edge.infra.PostgresEdgeRepository;
+import com.voting.platform.edge.repository.PostgresEdgeRepository;
 import com.voting.platform.edge.service.TelegramNotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;

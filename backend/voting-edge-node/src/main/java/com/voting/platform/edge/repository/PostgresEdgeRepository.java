@@ -1,4 +1,4 @@
-package com.voting.platform.edge.infra;
+package com.voting.platform.edge.repository;
 
 import com.voting.platform.domain.model.ElectionType;
 import com.voting.platform.domain.model.GlobalResultRecord;

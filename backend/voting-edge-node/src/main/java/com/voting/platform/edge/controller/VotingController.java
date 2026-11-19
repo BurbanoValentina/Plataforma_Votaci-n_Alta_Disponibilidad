@@ -7,7 +7,7 @@ import com.voting.platform.domain.model.Region;
 import com.voting.platform.domain.model.VoteRequestRecord;
 import com.voting.platform.domain.model.VoteTicketRecord;
 import com.voting.platform.edge.infra.InMemoryEligibilityStore;
-import com.voting.platform.edge.infra.PostgresEdgeRepository;
+import com.voting.platform.edge.repository.PostgresEdgeRepository;
 import com.voting.platform.edge.service.VotingGatewayService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
