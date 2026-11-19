@@ -1,4 +1,4 @@
-package com.voting.platform.stream.infra;
+package com.voting.platform.stream.repository;
 
 import com.voting.platform.domain.model.CandidateCatalog;
 import com.voting.platform.domain.model.EligibleVoterRecord;

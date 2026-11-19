@@ -7,7 +7,7 @@ import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoteSource;
 import com.voting.platform.domain.model.VoteTicketCode;
 import com.voting.platform.domain.port.VoteEventPublisher;
-import com.voting.platform.stream.infra.PostgresStreamRepository;
+import com.voting.platform.stream.repository.PostgresStreamRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

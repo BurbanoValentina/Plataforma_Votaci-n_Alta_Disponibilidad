@@ -1,4 +1,4 @@
-package com.voting.platform.stream.infra;
+package com.voting.platform.stream.messaging;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -6,6 +6,7 @@ import com.voting.platform.domain.model.EligibleVoterRecord;
 import com.voting.platform.domain.model.Region;
 import com.voting.platform.domain.model.VoteRecord;
 import com.voting.platform.domain.model.VoterId;
+import com.voting.platform.stream.repository.PostgresStreamRepository;
 import com.voting.platform.stream.service.AnalyticsArchiverService;
 import com.voting.platform.stream.service.BotDetectorService;
 import com.voting.platform.stream.service.RegionalRollupService;

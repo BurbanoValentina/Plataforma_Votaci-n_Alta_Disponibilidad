@@ -1,4 +1,4 @@
-package com.voting.platform.stream.infra;
+package com.voting.platform.stream.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;

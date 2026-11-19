@@ -1,4 +1,4 @@
-package com.voting.platform.stream.infra;
+package com.voting.platform.stream.messaging;
 
 import jakarta.annotation.PostConstruct;
 import org.apache.kafka.clients.admin.AdminClient;
